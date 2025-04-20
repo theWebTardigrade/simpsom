@@ -385,7 +385,18 @@ class SOMNet:
                 epochs = 10
 
         self.epochs = epochs
-        self.tau = self.epochs / self.xp.log(self.start_sigma)
+
+        ########################################################################################################
+        # ADDED by theWebTardigrade on 20/04/2025 to allow the calculation of QE and TE
+        # To run multiple SOMS in a single notebook, run
+        # som_net._total_epochs = 0
+
+        if not hasattr(self, '_total_epochs'):
+            self._total_epochs = 0
+        self._total_epochs += epochs
+        self.tau = self._total_epochs / self.xp.log(self.start_sigma)
+                  
+        #########################################################################################################
 
         if early_stop not in ["mapdiff", None]:
             logger.warning("Convergence method not recognized, early stopping will be deactivated. " +
