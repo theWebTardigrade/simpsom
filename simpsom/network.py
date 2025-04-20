@@ -23,7 +23,7 @@ class SOMNet:
                  'polygons', 'distance', 'neighborhood_fun', 'neighborhoods',
                  'convergence', 'height', 'width', 'init', 'PBC', 'GPU', 'CUML',
                  'nodes_list', 'start_sigma', 'start_learning_rate', 'epochs',
-                 'tau', 'sigma', 'learning_rate')
+                 'tau', 'sigma', 'learning_rate', '_total_epochs')
                  
     def __init__(self, net_height: int, net_width: int, data: np.ndarray,
                  load_file: str = None, metric: str = "euclidean",
@@ -57,7 +57,11 @@ class SOMNet:
             out_path (str): Path to the folder where all data and plots will be saved
                 (default, current folder).
         """
+        ########################################
+        self._total_epochs = 0
+        ########################################
 
+                     
         self.output_path = output_path
 
         if not debug:
