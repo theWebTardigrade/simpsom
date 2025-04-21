@@ -356,7 +356,7 @@ class SOMNet:
         
         # Calculate the distance between each input vector and its corresponding BMU
         distances = [
-            self.distance.pairdist(self.data[i:i+1], self.nodes_list[int(bmu)]) 
+            self.distance.pairdist(self.data[i:i+1], self.nodes_list[int(bmu)], metric='euclidean') 
             for i, bmu in enumerate(bmus)
         ]
         
