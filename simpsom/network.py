@@ -415,28 +415,28 @@ class SOMNet:
     def train(self, train_algo: str = "batch", epochs: int = -1,
           start_learning_rate: float = 0.01, early_stop: str = None,
           early_stop_patience: int = 3, early_stop_tolerance: float = 1e-4, batch_size: int = -1) -> None:
-    """Train the SOM.
-
-    Args:
-        train_algo (str): training algorithm, choose between "online" or "batch"
-            (default "online"). Beware that the online algorithm will run one datapoint
-            per epoch, while the batch algorithm runs all points at once for each epoch.
-        epochs (int): Number of training iterations. If not selected (or -1)
-            automatically set epochs as 10 times the number of datapoints.
-        start_learning_rate (float): Initial learning rate, used only in online
-            learning.
-        early_stop (str): Early stopping method, for now only "mapdiff" (checks if the
-            weights of nodes don"t change) is available. If None, don"t use early stopping (default None).
-        early_stop_patience (int): Number of iterations without improvement before stopping the
-            training, only available for batch training (default 3).
-        early_stop_tolerance (float): Improvement tolerance, if the map does not improve beyond
-            this threshold, the early stopping counter will be activated (it needs to be set
-            appropriately depending on the used distance metric). Ignored if early stopping
-            is off (default 1e-4).
-        batch_size (int): Split the dataset into batches of this size when calculating the
-            new weights, works only when train_algo is "batch" and helps keep memory usage down
-            when working with large datasets, if -1 run the whole dataset at once.
-    """
+        """Train the SOM.
+    
+        Args:
+            train_algo (str): training algorithm, choose between "online" or "batch"
+                (default "online"). Beware that the online algorithm will run one datapoint
+                per epoch, while the batch algorithm runs all points at once for each epoch.
+            epochs (int): Number of training iterations. If not selected (or -1)
+                automatically set epochs as 10 times the number of datapoints.
+            start_learning_rate (float): Initial learning rate, used only in online
+                learning.
+            early_stop (str): Early stopping method, for now only "mapdiff" (checks if the
+                weights of nodes don"t change) is available. If None, don"t use early stopping (default None).
+            early_stop_patience (int): Number of iterations without improvement before stopping the
+                training, only available for batch training (default 3).
+            early_stop_tolerance (float): Improvement tolerance, if the map does not improve beyond
+                this threshold, the early stopping counter will be activated (it needs to be set
+                appropriately depending on the used distance metric). Ignored if early stopping
+                is off (default 1e-4).
+            batch_size (int): Split the dataset into batches of this size when calculating the
+                new weights, works only when train_algo is "batch" and helps keep memory usage down
+                when working with large datasets, if -1 run the whole dataset at once.
+        """
     
         logger.info("The map will be trained with the " +
                     train_algo + " algorithm.")
