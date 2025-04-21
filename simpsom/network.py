@@ -351,65 +351,43 @@ class SOMNet:
         Returns:
             (float): Average distance between input vectors and their BMUs.
         """
-        # Get the BMUs for all input vectors
-        bmus = [self.find_bmu_ix(self.data[i:i+1]) for i in range(self.data.shape[0])]
-        
-        # Calculate the distance between each input vector and its corresponding BMU
-        distances = [
-            self.distance.pairdist(self.data[i:i+1], self.nodes_list[int(bmu)], metric='euclidean') 
-            for i, bmu in enumerate(bmus)
-        ]
-        
-        # Compute the mean distance (Quantization Error)
-        qe = np.mean(distances)
-        
-        # Store the Quantization Error as an attribute in the SOM object
-        self.quantization_error = qe
-        
-        return qe
+        bmus = self.find_bmu_ix(self.data)
+        bmu_weights = self.xp.array([self.nodes_list[int(bmu)].weights for bmu in bmus])
+    
+        distances = self.distance.pairdist(self.data, bmu_weights, metric=self.metric)
+        qe = self.xp.mean(distances)
+        return float(qe.get() if self.GPU else qe)
 
 
     def calculate_te(self) -> float:
         """Calculate Topographic Error (TE).
     
         Returns:
-            (float): Percentage of vectors with incorrect topographic neighborhood.
+            (float): Proportion of vectors whose BMU and second BMU are not neighbors.
         """
-        te = 0
-        
-        # Loop through the data (starting from the second element)
-        for i in range(1, self.data.shape[0]):
-            # Find the BMUs for consecutive vectors
-            bmu1 = self.find_bmu_ix(self.data[i-1:i])
-            bmu2 = self.find_bmu_ix(self.data[i:i+1])
+        data_cp = self.data
+        weights = self.xp.array([node.weights for node in self.nodes_list])
+        positions = self.xp.array([[node.x, node.y] for node in self.nodes_list])
     
-            # If BMUs of consecutive vectors are not adjacent in the map, increment TE
-            if not self.are_neighbors(bmu1, bmu2):
-                te += 1
+        # Compute distances between all data points and SOM nodes
+        dists = self.distance.pairdist(data_cp, weights, metric=self.metric)
     
-        # Compute the Topographic Error (percentage of incorrect neighbors)
-        te_percentage = (te / self.data.shape[0]) * 100
-        
-        # Store the Topographic Error as an attribute in the SOM object
-        self.topographic_error = te_percentage
-        
-        return te_percentage
-
-    def are_neighbors(self, bmu1: int, bmu2: int) -> bool:
-        """Check if two BMUs are neighbors.
-
-        Args:
-            bmu1 (int): Index of the first BMU.
-            bmu2 (int): Index of the second BMU.
-
-        Returns:
-            (bool): True if BMUs are neighbors, False otherwise.
-        """
-        node1 = self.nodes_list[bmu1]
-        node2 = self.nodes_list[bmu2]
-
-        # Check if nodes are neighbors in the grid
-        return abs(node1.x - node2.x) <= 1 and abs(node1.y - node2.y) <= 1
+        # Sort to find BMU and second BMU indices
+        sorted_indices = self.xp.argsort(dists, axis=1)
+        bmu_indices = sorted_indices[:, 0]
+        sbmu_indices = sorted_indices[:, 1]
+    
+        # Get positions of BMUs and second BMUs
+        bmu_pos = positions[bmu_indices]
+        sbmu_pos = positions[sbmu_indices]
+    
+        # Compute if they are not neighbors
+        row_diff = self.xp.abs(bmu_pos[:, 0] - sbmu_pos[:, 0])
+        col_diff = self.xp.abs(bmu_pos[:, 1] - sbmu_pos[:, 1])
+        not_neighbors = (row_diff > 1) | (col_diff > 1)
+    
+        te = self.xp.sum(not_neighbors) / data_cp.shape[0]
+        return float(te.get() if self.GPU else te)
     ##########
     
     def train(self, train_algo: str = "batch", epochs: int = -1,
