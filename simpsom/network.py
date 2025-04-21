@@ -588,7 +588,7 @@ class SOMNet:
 
              #########################################################################################
                 # Calculate QE and TE for the current epoch
-                qe = self.calculate_qe(batch_size=1024)  # This method should return the quantization error
+                qe = self.calculate_qe(batch_size=512)  # This method should return the quantization error
                 te = self.calculate_te()  # This method should return the topographic error
     
                 # Append QE and TE to their respective lists
