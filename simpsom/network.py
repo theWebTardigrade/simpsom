@@ -367,7 +367,7 @@ class SOMNet:
         """
         data_cp = self.data
         weights = self.xp.array([node.weights for node in self.nodes_list])
-        positions = self.xp.array([[node.x, node.y] for node in self.nodes_list])
+        positions = self.xp.array([node.pos for node in self.nodes_list])  # <-- FIXED
     
         # Compute distances between all data points and SOM nodes
         dists = self.distance.pairdist(data_cp, weights, metric=self.metric)
