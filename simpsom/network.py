@@ -345,17 +345,26 @@ class SOMNet:
         return self.xp.argmin(dists, axis=1)
 
     ##########
-    def calculate_qe(self) -> float:
-        """Calculate Quantization Error (QE).
-    
+    def calculate_qe(self, batch_size: int = 1024) -> float:
+        """Calculate Quantization Error (QE) more memory-efficiently.
+
+        Args:
+            batch_size (int): Size of the data chunks to process.
+
         Returns:
             (float): Average distance between input vectors and their BMUs.
         """
-        bmus = self.find_bmu_ix(self.data)
-        bmu_weights = self.xp.array([self.nodes_list[int(bmu)].weights for bmu in bmus])
-    
-        distances = self.distance.pairdist(self.data, bmu_weights, metric=self.metric)
-        qe = self.xp.mean(distances)
+        num_data_points = self.data.shape[0]
+        total_distance = self.xp.zeros(1, dtype=self.xp.float32)
+
+        for i in range(0, num_data_points, batch_size):
+            batch_data = self.data[i:i + batch_size]
+            bmus = self.find_bmu_ix(batch_data)
+            bmu_weights_batch = self.xp.array([self.nodes_list[int(bmu)].weights for bmu in bmus])
+            distances_batch = self.distance.pairdist(batch_data, bmu_weights_batch, metric=self.metric)
+            total_distance += self.xp.sum(distances_batch)
+
+        qe = total_distance / num_data_points
         return float(qe.get() if self.GPU else qe)
 
 
@@ -449,10 +458,12 @@ class SOMNet:
             _n_parallel = self._get_n_process()
         else:
             _n_parallel = batch_size
-    
+
+        ###############################################################
         # Initialize lists to track QE and TE during training
         self.quantization_error = []
         self.topographic_error = []
+        ###############################################################
     
         if train_algo == "online":
             """ Online training.
@@ -576,11 +587,8 @@ class SOMNet:
                     denominator != 0, numerator / denominator, all_weights)
 
              #########################################################################################
-                # Temporarily update node weights for QE/TE calculation
-                for n_node, node in enumerate(self.nodes_list):
-                    node.weights = new_weights.reshape(self.width * self.height, -1)[n_node]
                 # Calculate QE and TE for the current epoch
-                qe = self.calculate_qe()  # This method should return the quantization error
+                qe = self.calculate_qe(batch_size=1024)  # This method should return the quantization error
                 te = self.calculate_te()  # This method should return the topographic error
     
                 # Append QE and TE to their respective lists
