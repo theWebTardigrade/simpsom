@@ -486,13 +486,12 @@ class SOMNet:
                     node._update_weights(
                         input_vec[0], self.sigma, self.learning_rate, bmu)
     
-                # Calculate QE and TE for the current epoch
-                qe = self.calculate_qe()  # This method should return the quantization error
-                te = self.calculate_te()  # This method should return the topographic error
-    
-                # Append QE and TE to their respective lists
-                self.quantization_error.append(qe)
-                self.topographic_error.append(te)
+                # Only compute QE/TE every full pass through dataset
+                if (n_iter + 1) % self.data.shape[0] == 0:
+                    qe = self.calculate_qe()
+                    te = self.calculate_te()
+                    self.quantization_error.append(qe)
+                    self.topographic_error.append(te)
     
                 if n_iter % self.data.shape[0] == 0 and early_stop is not None:
                     early_stopper.check_convergence(
@@ -575,7 +574,11 @@ class SOMNet:
     
                 new_weights = self.xp.where(
                     denominator != 0, numerator / denominator, all_weights)
-    
+
+             #########################################################################################
+                # Temporarily update node weights for QE/TE calculation
+                for n_node, node in enumerate(self.nodes_list):
+                    node.weights = new_weights.reshape(self.width * self.height, -1)[n_node]
                 # Calculate QE and TE for the current epoch
                 qe = self.calculate_qe()  # This method should return the quantization error
                 te = self.calculate_te()  # This method should return the topographic error
@@ -583,6 +586,7 @@ class SOMNet:
                 # Append QE and TE to their respective lists
                 self.quantization_error.append(qe)
                 self.topographic_error.append(te)
+            #########################################################################################
     
                 if early_stop is not None:
                     loss = self.xp.abs(self.xp.subtract(
