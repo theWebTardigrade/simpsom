@@ -23,7 +23,7 @@ class SOMNet:
                  'polygons', 'distance', 'neighborhood_fun', 'neighborhoods',
                  'convergence', 'height', 'width', 'init', 'PBC', 'GPU', 'CUML',
                  'nodes_list', 'start_sigma', 'start_learning_rate', 'epochs',
-                 'tau', 'sigma', 'learning_rate', '_total_epochs')
+                 'tau', 'sigma', 'learning_rate', 'quantization_error', 'topographic_error')
                  
     def __init__(self, net_height: int, net_width: int, data: np.ndarray,
                  load_file: str = None, metric: str = "euclidean",
@@ -57,10 +57,9 @@ class SOMNet:
             out_path (str): Path to the folder where all data and plots will be saved
                 (default, current folder).
         """
-        ########################################
-        self._total_epochs = 0
-        ########################################
-
+                     
+        self.quantization_error = []
+        self.topographic_error = []
                      
         self.output_path = output_path
 
@@ -345,226 +344,294 @@ class SOMNet:
 
         return self.xp.argmin(dists, axis=1)
 
-    def train(self, train_algo: str = "batch", epochs: int = -1,
-              start_learning_rate: float = 0.01, early_stop: str = None,
-              early_stop_patience: int = 3, early_stop_tolerance: float = 1e-4, batch_size: int = -1) -> None:
-        """Train the SOM.
+    ##########
+    def calculate_qe(self) -> float:
+        """Calculate Quantization Error (QE).
+    
+        Returns:
+            (float): Average distance between input vectors and their BMUs.
+        """
+        # Get the BMUs for all input vectors
+        bmus = [self.find_bmu_ix(self.data[i:i+1]) for i in range(self.data.shape[0])]
+        
+        # Calculate the distance between each input vector and its corresponding BMU
+        distances = [
+            self.distance.pairdist(self.data[i:i+1], self.nodes_list[int(bmu)]) 
+            for i, bmu in enumerate(bmus)
+        ]
+        
+        # Compute the mean distance (Quantization Error)
+        qe = np.mean(distances)
+        
+        # Store the Quantization Error as an attribute in the SOM object
+        self.quantization_error = qe
+        
+        return qe
+
+
+    def calculate_te(self) -> float:
+        """Calculate Topographic Error (TE).
+    
+        Returns:
+            (float): Percentage of vectors with incorrect topographic neighborhood.
+        """
+        te = 0
+        
+        # Loop through the data (starting from the second element)
+        for i in range(1, self.data.shape[0]):
+            # Find the BMUs for consecutive vectors
+            bmu1 = self.find_bmu_ix(self.data[i-1:i])
+            bmu2 = self.find_bmu_ix(self.data[i:i+1])
+    
+            # If BMUs of consecutive vectors are not adjacent in the map, increment TE
+            if not self.are_neighbors(bmu1, bmu2):
+                te += 1
+    
+        # Compute the Topographic Error (percentage of incorrect neighbors)
+        te_percentage = (te / self.data.shape[0]) * 100
+        
+        # Store the Topographic Error as an attribute in the SOM object
+        self.topographic_error = te_percentage
+        
+        return te_percentage
+
+    def are_neighbors(self, bmu1: int, bmu2: int) -> bool:
+        """Check if two BMUs are neighbors.
 
         Args:
-            train_algo (str): training algorithm, choose between "online" or "batch"
-                (default "online"). Beware that the online algorithm will run one datapoint
-                per epoch, while the batch algorithm runs all points at one for each epoch.
-            epochs (int): Number of training iterations. If not selected (or -1)
-                automatically set epochs as 10 times the number of datapoints.
-                Warning: for online training each epoch corresponds to 1 sample in the
-                input dataset, for batch training it corresponds to one full dataset
-                training.
-            start_learning_rate (float): Initial learning rate, used only in online
-                learning.
-            early_stop (str): Early stopping method, for now only "mapdiff" (checks if the
-                weights of nodes don"t change) is available. If None, don"t use early stopping (default None).
-            early_stop_patience (int): Number of iterations without improvement before stopping the
-                training, only available for batch training (default 3).
-            early_stop_tolerance (float): Improvement tolerance, if the map does not improve beyond
-                this threshold, the early stopping counter will be activated (it needs to be set
-                appropriately depending on the used distance metric). Ignored if early stopping
-                is off (default 1e-4).
-            batch_size (int): Split the dataset in batches of this size when calculating the
-                new weights, works only when train_algo is "batch" and helps keeping down the
-                memory requirements when working with large datasets, if -1 run the whole dataset
-                at once.
-        """
+            bmu1 (int): Index of the first BMU.
+            bmu2 (int): Index of the second BMU.
 
+        Returns:
+            (bool): True if BMUs are neighbors, False otherwise.
+        """
+        node1 = self.nodes_list[bmu1]
+        node2 = self.nodes_list[bmu2]
+
+        # Check if nodes are neighbors in the grid
+        return abs(node1.x - node2.x) <= 1 and abs(node1.y - node2.y) <= 1
+    ##########
+    
+    def train(self, train_algo: str = "batch", epochs: int = -1,
+          start_learning_rate: float = 0.01, early_stop: str = None,
+          early_stop_patience: int = 3, early_stop_tolerance: float = 1e-4, batch_size: int = -1) -> None:
+    """Train the SOM.
+
+    Args:
+        train_algo (str): training algorithm, choose between "online" or "batch"
+            (default "online"). Beware that the online algorithm will run one datapoint
+            per epoch, while the batch algorithm runs all points at once for each epoch.
+        epochs (int): Number of training iterations. If not selected (or -1)
+            automatically set epochs as 10 times the number of datapoints.
+        start_learning_rate (float): Initial learning rate, used only in online
+            learning.
+        early_stop (str): Early stopping method, for now only "mapdiff" (checks if the
+            weights of nodes don"t change) is available. If None, don"t use early stopping (default None).
+        early_stop_patience (int): Number of iterations without improvement before stopping the
+            training, only available for batch training (default 3).
+        early_stop_tolerance (float): Improvement tolerance, if the map does not improve beyond
+            this threshold, the early stopping counter will be activated (it needs to be set
+            appropriately depending on the used distance metric). Ignored if early stopping
+            is off (default 1e-4).
+        batch_size (int): Split the dataset into batches of this size when calculating the
+            new weights, works only when train_algo is "batch" and helps keep memory usage down
+            when working with large datasets, if -1 run the whole dataset at once.
+    """
+    
         logger.info("The map will be trained with the " +
                     train_algo + " algorithm.")
         self.start_sigma = max(self.height, self.width) / 2
         self.start_learning_rate = start_learning_rate
-
+    
         self.data = self.xp.array(self.data)
-
+    
         if epochs == -1:
             if train_algo == 'online':
                 epochs = self.data.shape[0] * 10
             else:
                 epochs = 10
-
+    
         self.epochs = epochs
-
-        ########################################################################################################
-        # ADDED by theWebTardigrade on 20/04/2025 to allow the calculation of QE and TE
-        # To run multiple SOMS in a single notebook, run
-        # som_net._total_epochs = 0
-
-        if not hasattr(self, '_total_epochs'):
-            self._total_epochs = 0
-        self._total_epochs += epochs
-        self.tau = self._total_epochs / self.xp.log(self.start_sigma)
-                  
-        #########################################################################################################
-
+        self.tau = self.epochs / self.xp.log(self.start_sigma)
+    
         if early_stop not in ["mapdiff", None]:
             logger.warning("Convergence method not recognized, early stopping will be deactivated. " +
                            "Currently only \"mapdiff\" is available.")
             early_stop = None
-
+    
         if early_stop is not None:
             logger.info("Early stop active.")
             logger.warning("Early stop is an experimental feature, " +
                            "make sure to know what you are doing!")
-
+    
         early_stopper = EarlyStop(tolerance=early_stop_tolerance,
                                   patience=early_stop_patience)
-
+    
         if batch_size == -1 or batch_size > self.data.shape[0]:
             _n_parallel = self._get_n_process()
         else:
             _n_parallel = batch_size
-
+    
+        # Initialize lists to track QE and TE during training
+        self.quantization_error = []
+        self.topographic_error = []
+    
         if train_algo == "online":
             """ Online training.
             Bootstrap: one datapoint is extracted randomly with replacement at each epoch
             and used to update the weights.
             """
-
+    
             datapoints_ix = self._randomize_dataset(self.data, self.epochs)
-
+    
             for n_iter in range(self.epochs):
-
+    
                 if early_stopper.stop_training:
                     logger.info(
                         "\rEarly stop tolerance reached at epoch {:d}, training will be stopped.".format(n_iter - 1))
                     self.convergence = early_stopper.convergence
                     break
-
+    
                 if n_iter % 10 == 0:
                     logger.debug("\rTraining SOM... {:d}%".format(
                         int(n_iter * 100.0 / self.epochs)))
-
+    
                 self._update_sigma(n_iter)
                 self._update_learning_rate(n_iter)
-
+    
                 datapoint_ix = datapoints_ix.pop()
-                input_vec = self.data[datapoint_ix, :].reshape(
-                    1, self.data.shape[1])
-
+                input_vec = self.data[datapoint_ix, :].reshape(1, self.data.shape[1])
+    
                 bmu = self.nodes_list[int(self.find_bmu_ix(input_vec)[0])]
-
+    
                 for node in self.nodes_list:
                     node._update_weights(
                         input_vec[0], self.sigma, self.learning_rate, bmu)
-
+    
+                # Calculate QE and TE for the current epoch
+                qe = self.calculate_qe()  # This method should return the quantization error
+                te = self.calculate_te()  # This method should return the topographic error
+    
+                # Append QE and TE to their respective lists
+                self.quantization_error.append(qe)
+                self.topographic_error.append(te)
+    
                 if n_iter % self.data.shape[0] == 0 and early_stop is not None:
                     early_stopper.check_convergence(
                         early_stopper.calc_loss(self))
-
+    
         elif train_algo == "batch":
             """ Batch training.
             All datapoints are used at once for each epoch,
             the weights are updated with the sum of contributions from all these points.
             No learning rate needed.
-
-            Kinouchi, M. et al. "Quick Learning for Batch-Learning Self-Organizing Map" (2002).
             """
-
-            # Storing the distances and weight matrices defeats the purpose of having
-            # nodes as instances of a class, but it helps with the optimization
-            # and parallelization at the cost of memory.
-            # The object-oriented structure is kept to simplify code reading.
-
+    
             all_weights = self.xp.array([n.weights for n in self.nodes_list], dtype=self.xp.float32)
             all_weights = all_weights.reshape(self.width, self.height, self.data.shape[1])
-
+    
             numerator = self.xp.zeros(all_weights.shape, dtype=self.xp.float32)
             denominator = self.xp.zeros(
                 (all_weights.shape[0], all_weights.shape[1], 1), dtype=self.xp.float32)
-
+    
             unravel_precomputed = self.xp.unravel_index(self.xp.arange(self.width * self.height, dtype=self.xp.int64), (self.width, self.height))
-
+    
             _xx, _yy = self.xp.meshgrid(self.xp.arange(self.width), self.xp.arange(self.height))
-
+    
             if self.PBC:
                 pbc_func_params = self.polygons.neighborhood_pbc
             else:
                 pbc_func_params = None
-
+    
             neighborhoods = Neighborhoods(self.xp, _xx, _yy, pbc_func_params)
-
+    
             sq_weights = None
-
+    
             for n_iter in range(self.epochs):
-
+    
                 if self.metric in ["euclidean", "cosine"]:
                     sq_weights = (self.xp.power(all_weights.reshape(-1, all_weights.shape[2]), 2).sum(axis=1, keepdims=True))
-
+    
                 if early_stopper.stop_training:
                     logger.info(
                         "\rEarly stop tolerance reached at epoch {:d}, training will be stopped.".format(n_iter - 1))
                     self.convergence = early_stopper.convergence
                     break
-
+    
                 self._update_sigma(n_iter)
                 self._update_learning_rate(n_iter)
-
+    
                 if n_iter % 10 == 0:
                     logger.debug("Training SOM... {:.2f}%".format(
                         n_iter * 100.0 / self.epochs))
-
+    
                 try:
                     numerator.fill(0)
                     denominator.fill(0)
                 except AttributeError:
                     numerator = self.xp.zeros(all_weights.shape, dtype=self.xp.float32)
                     denominator = self.xp.zeros((all_weights.shape[0], all_weights.shape[1], 1), dtype=self.xp.float32)
-
+    
                 for i in range(0, len(self.data), _n_parallel):
                     start = i
                     end = start + _n_parallel
                     if end > len(self.data):
                         end = len(self.data)
-
+    
                     batchdata = self.data[start:end]
-
+    
                     # Find BMUs for all points and subselect gaussian matrix.
                     dists = self.distance.batchpairdist(batchdata, all_weights, sq_weights, self.metric)
-
+    
                     raveled_idxs = dists.argmin(axis=1)
                     wins = (unravel_precomputed[0][raveled_idxs], unravel_precomputed[1][raveled_idxs])
-
+    
                     g_gpu = neighborhoods.neighborhood_caller(self.neighborhood_fun, wins, self.sigma) * self.learning_rate
-
+    
                     sum_g_gpu = self.xp.sum(g_gpu, axis=0)
                     g_flat_gpu = g_gpu.reshape(g_gpu.shape[0], -1)
                     gT_dot_x_flat_gpu = self.xp.dot(g_flat_gpu.T, batchdata)
-
+    
                     numerator += gT_dot_x_flat_gpu.reshape(numerator.shape)
                     denominator += sum_g_gpu[:, :, self.xp.newaxis]
-
+    
                 new_weights = self.xp.where(
                     denominator != 0, numerator / denominator, all_weights)
-
+    
+                # Calculate QE and TE for the current epoch
+                qe = self.calculate_qe()  # This method should return the quantization error
+                te = self.calculate_te()  # This method should return the topographic error
+    
+                # Append QE and TE to their respective lists
+                self.quantization_error.append(qe)
+                self.topographic_error.append(te)
+    
                 if early_stop is not None:
                     loss = self.xp.abs(self.xp.subtract(
                         new_weights, all_weights)).mean()
                     early_stopper.check_convergence(loss)
-
+    
                 all_weights = new_weights
-
+    
             # Revert to object oriented
             all_weights = all_weights.reshape(self.width * self.height, self.data.shape[1])
             for n_node, node in enumerate(self.nodes_list):
                 node.weights = all_weights[n_node]
-
+    
         else:
             logger.error(
                 "Training algorithm not recognized. Choose between \"online\" and \"batch\".")
             sys.exit(1)
-
+    
         if self.GPU:
             for node in self.nodes_list:
                 node.weights = node.weights.get()
         if early_stop is not None:
             self.convergence = [arr.get(
             ) for arr in early_stopper.convergence] if self.GPU else early_stopper.convergence
+    
+
+    ##########
 
     def get_nodes_difference(self) -> None:
         """ Extracts the neighbouring nodes difference in weights and assigns it
