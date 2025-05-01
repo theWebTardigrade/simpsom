@@ -385,18 +385,15 @@ class SOMNet:
         num_data_points = self.data.shape[0]
         total_distance = self.xp.zeros(1, dtype=self.xp.float32)
 
-        distance_list = []
-
         for i in range(0, num_data_points, batch_size):
             batch_data = self.data[i:i + batch_size]
             bmus = self.find_bmu_ix(batch_data)
             bmu_weights_batch = self.xp.array([self.nodes_list[int(bmu)].weights for bmu in bmus])
             distances_batch = self.distance.pairdist(batch_data, bmu_weights_batch, metric=self.metric)
-            distance_list.append(distance_list)
             total_distance += self.xp.sum(distances_batch)
 
         qe = total_distance / num_data_points
-        return (distance_list.get() if self.GPU else distance_list)
+        return float(qe.get() if self.GPU else qe)
 
     # Used MiniSom _topographic_error_hexagonal as a reference
     def calculate_te(self, batch_size: int = 1024) -> float:
