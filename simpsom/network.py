@@ -373,7 +373,7 @@ class SOMNet:
         return bmu1, bmu2
 
 
-    def calculate_qe(self) -> float:
+    def calculate_qe(self, batch_size: int = 1024) -> float:
         """Calculate Quantization Error (QE) more memory-efficiently.
 
         Args:
