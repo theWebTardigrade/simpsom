@@ -57,9 +57,14 @@ class SOMNet:
             out_path (str): Path to the folder where all data and plots will be saved
                 (default, current folder).
         """
+
+        ##############################################################################
+        # Added by M. Pólvora Fonseca 30/04/2025
+        # Save Quantization and Topographic errors for each epoch
                      
         self.quantization_error = []
         self.topographic_error = []
+        ##############################################################################    
                      
         self.output_path = output_path
 
@@ -344,7 +349,38 @@ class SOMNet:
 
         return self.xp.argmin(dists, axis=1)
 
-    ##########
+    
+    ##############################################################################
+    # Added by M. Pólvora Fonseca 30/04/2025
+    # Calculate 1st and 2nds BMUs 
+    # Calculate Quantization and Topographic Error
+
+
+    # From I. Matute @is-mat-tron
+    def find_2bmu_ix(self, vecs: np.array) -> 'SOMNode':
+        """Find the index of the best 2 matching units (BMUs) for a given list of vectors.
+        
+        Args:
+            vec (array or list[lists, ..]): vectors whose distance from the network
+                nodes will be calculated.
+        Returns:
+            (bmu1, bmu2)
+            bmu1 (array): The best matching unit node index.
+            bmu2 (array): The second best matching unit node index.
+        """
+
+        dists = self.distance.pairdist(vecs,
+                                       self.xp.array(
+                                           [n.weights for n in self.nodes_list]),
+                                       metric=self.metric)
+        
+        bmu1 = self.xp.argmin(dists, axis=1)
+        dists[bmu1] = 1e10 # High value to turn the 2nd bmu into the 1st bmu
+        bmu2 = self.xp.argmin(dists, axis=1) 
+        
+        return (bmu1, bmu2)
+
+
     def calculate_qe(self, batch_size: int = 1024) -> float:
         """Calculate Quantization Error (QE) more memory-efficiently.
 
@@ -367,37 +403,23 @@ class SOMNet:
         qe = total_distance / num_data_points
         return float(qe.get() if self.GPU else qe)
 
-
+    # Used MiniSom _topographic_error_hexagonal as a reference
     def calculate_te(self) -> float:
         """Calculate Topographic Error (TE).
     
         Returns:
             (float): Proportion of vectors whose BMU and second BMU are not neighbors.
         """
-        data_cp = self.data
-        weights = self.xp.array([node.weights for node in self.nodes_list])
-        positions = self.xp.array([node.pos for node in self.nodes_list])  # <-- FIXED
-    
-        # Compute distances between all data points and SOM nodes
-        dists = self.distance.pairdist(data_cp, weights, metric=self.metric)
-    
-        # Sort to find BMU and second BMU indices
-        sorted_indices = self.xp.argsort(dists, axis=1)
-        bmu_indices = sorted_indices[:, 0]
-        sbmu_indices = sorted_indices[:, 1]
-    
-        # Get positions of BMUs and second BMUs
-        bmu_pos = positions[bmu_indices]
-        sbmu_pos = positions[sbmu_indices]
-    
-        # Compute if they are not neighbors
-        row_diff = self.xp.abs(bmu_pos[:, 0] - sbmu_pos[:, 0])
-        col_diff = self.xp.abs(bmu_pos[:, 1] - sbmu_pos[:, 1])
-        not_neighbors = (row_diff > 1) | (col_diff > 1)
-    
-        te = self.xp.sum(not_neighbors) / data_cp.shape[0]
+        # Compute first and second bmus
+        (bmu1, bmu2) = self.find_2bmu_ix(self.data)
+
+        # Creates a list were neigboors are True (=1)
+        b2mu_neighbors = [xp.isclose(1,bmu1.get_node_distnce(bmu2)) for bmu1, bmu2 in (bmu1, bmu2)]
+
+        # Calculates the fraction of nodes that aren't neigboors
+        te = 1 - xp.mean(b2mu_neighbors)
         return float(te.get() if self.GPU else te)
-    ##########
+    ##############################################################################
     
     def train(self, train_algo: str = "batch", epochs: int = -1,
           start_learning_rate: float = 0.01, early_stop: str = None,
@@ -497,13 +519,6 @@ class SOMNet:
                     node._update_weights(
                         input_vec[0], self.sigma, self.learning_rate, bmu)
     
-                # Only compute QE/TE every full pass through dataset
-                if (n_iter + 1) % self.data.shape[0] == 0:
-                    qe = self.calculate_qe()
-                    te = self.calculate_te()
-                    self.quantization_error.append(qe)
-                    self.topographic_error.append(te)
-    
                 if n_iter % self.data.shape[0] == 0 and early_stop is not None:
                     early_stopper.check_convergence(
                         early_stopper.calc_loss(self))
@@ -586,10 +601,21 @@ class SOMNet:
                 new_weights = self.xp.where(
                     denominator != 0, numerator / denominator, all_weights)
 
-             #########################################################################################
+            ##########################################################################################
+            # Added by M. Pólvora Fonseca 30/04/2025
+
+                # Revert to object oriented
+                all_weights = all_weights.reshape(self.width * self.height, self.data.shape[1])
+                for n_node, node in enumerate(self.nodes_list):
+                    node.weights = all_weights[n_node]
+
+                if self.GPU:
+                    for node in self.nodes_list:
+                        node.weights = node.weights.get()
+            
                 # Calculate QE and TE for the current epoch
-                qe = self.calculate_qe(batch_size=512)  # This method should return the quantization error
-                te = self.calculate_te()  # This method should return the topographic error
+                qe = self.calculate_qe(batch_size=512)
+                te = self.calculate_te()
     
                 # Append QE and TE to their respective lists
                 self.quantization_error.append(qe)
