@@ -57,14 +57,6 @@ class SOMNet:
             out_path (str): Path to the folder where all data and plots will be saved
                 (default, current folder).
         """
-
-        ##############################################################################
-        # Added by M. Pólvora Fonseca 30/04/2025
-        # Save Quantization and Topographic errors for each epoch
-                     
-        self.quantization_error = []
-        self.topographic_error = []
-        ##############################################################################    
                      
         self.output_path = output_path
 
@@ -492,12 +484,6 @@ class SOMNet:
             _n_parallel = self._get_n_process()
         else:
             _n_parallel = batch_size
-
-        ###############################################################
-        # Initialize lists to track QE and TE during training
-        self.quantization_error = []
-        self.topographic_error = []
-        ###############################################################
     
         if train_algo == "online":
             """ Online training.
@@ -621,23 +607,23 @@ class SOMNet:
 
             ##########################################################################################
             # Added by M. Pólvora Fonseca 30/04/2025
+            # Copied from I.Matute @is-mat-tron
 
-                # Revert to object oriented
-                all_weights = all_weights.reshape(self.width * self.height, self.data.shape[1])
-                for n_node, node in enumerate(self.nodes_list):
-                    node.weights = all_weights[n_node]
+                if ((n_iter+1) < self.epochs):
 
-                if self.GPU:
-                    for node in self.nodes_list:
-                        node.weights = node.weights.get()
-            
-                # Calculate QE and TE for the current epoch
-                qe = self.calculate_qe()
-                te = self.calculate_te()
-    
-                # Append QE and TE to their respective lists
-                self.quantization_error.append(qe)
-                self.topographic_error.append(te)
+                    # Revert to object oriented
+                    all_weights = all_weights.reshape(self.width * self.height, self.data.shape[1])
+                    for n_node, node in enumerate(self.nodes_list):
+                        node.weights = all_weights[n_node]
+
+                    if self.GPU:
+                        for node in self.nodes_list:
+                            node.weights = node.weights.get()
+                    
+                    self.save_map(file_name = 'trained_som_' + str(n_iter+1) + 'epoch'+ '.npy')   # Added by I. Matute to save map after each epoch
+
+                    all_weights = self.xp.array([n.weights for n in self.nodes_list], dtype=self.xp.float32)
+                    all_weights = all_weights.reshape(self.width, self.height, self.data.shape[1])  
             #########################################################################################
     
                 if early_stop is not None:
