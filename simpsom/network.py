@@ -414,7 +414,7 @@ class SOMNet:
         bmu1, bmu2 = self.find_2bmu_ix(self.data)
 
         # Creates a list were neigboors are True (=1)
-        b2mu_neighbors = [self.xp.isclose(1, bmu1[i].get_node_distance(bmu2[i])) for i in range(len(bmu1))]
+        b2mu_neighbors = [self.xp.isclose(1, self.nodes_list[int(bmu1[i])].get_node_distance(self.nodes_list[int(bmu2[i])])) for i in range(len(bmu1))]
 
         # Calculates the fraction of nodes that aren't neighbors
         te = 1 - self.xp.mean(self.xp.array(b2mu_neighbors))
