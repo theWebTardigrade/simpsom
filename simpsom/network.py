@@ -414,15 +414,19 @@ class SOMNet:
         
         b2mu_neighbors = []
         for i in range(0, len(bmu1), batch_size):
-            batch_bmu1 = bmu1[i:i + batch_size]
-            batch_bmu2 = bmu2[i:i + batch_size]
+            batch_bmu1_indices = bmu1[i:i + batch_size]
+            batch_bmu2_indices = bmu2[i:i + batch_size]
+    
+            # Get the actual SOMNode objects for the batch.  This is crucial.
+            batch_bmu1_nodes = [self.nodes_list[int(idx)] for idx in batch_bmu1_indices]
+            batch_bmu2_nodes = [self.nodes_list[int(idx)] for idx in batch_bmu2_indices]
             
-            # Calculate neighbors for the current batch
+            # Calculate neighbors for the current batch using the provided get_node_distance
             batch_neighbors = [
-                self.xp.isclose(1, self.nodes_list[int(batch_bmu1[j])].get_node_distance(self.nodes_list[int(batch_bmu2[j])]))
-                for j in range(len(batch_bmu1))
+                self.xp.isclose(1, self.get_node_distance(batch_bmu1_nodes[j], batch_bmu2_nodes[j]))
+                for j in range(len(batch_bmu1_nodes))
             ]
-            b2mu_neighbors.extend(batch_neighbors) # Extend the list, not append
+            b2mu_neighbors.extend(batch_neighbors.tolist())
     
         # Calculates the fraction of nodes that aren't neighbors
         te = 1 - self.xp.mean(self.xp.array(b2mu_neighbors))
