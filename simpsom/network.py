@@ -419,13 +419,13 @@ class SOMNet:
             
             # Calculate neighbors for the current batch
             batch_neighbors = [
-                xp.isclose(1, self.nodes_list[int(batch_bmu1[j])].get_node_distance(self.nodes_list[int(batch_bmu2[j])]))
+                self.xp.isclose(1, self.nodes_list[int(batch_bmu1[j])].get_node_distance(self.nodes_list[int(batch_bmu2[j])]))
                 for j in range(len(batch_bmu1))
             ]
             b2mu_neighbors.extend(batch_neighbors) # Extend the list, not append
     
         # Calculates the fraction of nodes that aren't neighbors
-        te = 1 - xp.mean(xp.array(b2mu_neighbors))
+        te = 1 - self.xp.mean(self.xp.array(b2mu_neighbors))
         return float(te.get() if self.GPU else te)
     ##############################################################################
     
