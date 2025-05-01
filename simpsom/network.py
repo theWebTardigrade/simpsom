@@ -528,7 +528,13 @@ class SOMNet:
             All datapoints are used at once for each epoch,
             the weights are updated with the sum of contributions from all these points.
             No learning rate needed.
+
+            Kinouchi, M. et al. "Quick Learning for Batch-Learning Self-Organizing Map" (2002).
             """
+            # Storing the distances and weight matrices defeats the purpose of having
+            # nodes as instances of a class, but it helps with the optimization
+            # and parallelization at the cost of memory.
+            # The object-oriented structure is kept to simplify code reading.
     
             all_weights = self.xp.array([n.weights for n in self.nodes_list], dtype=self.xp.float32)
             all_weights = all_weights.reshape(self.width, self.height, self.data.shape[1])
