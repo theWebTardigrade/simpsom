@@ -378,7 +378,7 @@ class SOMNet:
         dists[bmu1] = 1e10 # High value to turn the 2nd bmu into the 1st bmu
         bmu2 = self.xp.argmin(dists, axis=1) 
         
-        return (bmu1, bmu2)
+        return bmu1, bmu2
 
 
     def calculate_qe(self, batch_size: int = 1024) -> float:
@@ -411,10 +411,10 @@ class SOMNet:
             (float): Proportion of vectors whose BMU and second BMU are not neighbors.
         """
         # Compute first and second bmus
-        (bmu1, bmu2) = self.find_2bmu_ix(self.data)
+        bmu1, bmu2 = self.find_2bmu_ix(self.data)
 
         # Creates a list were neigboors are True (=1)
-        b2mu_neighbors = [xp.isclose(1, bmu1[i].get_node_distnce(bmu2[i])) for i in range(len(bmu1))]
+        b2mu_neighbors = [xp.isclose(1, bmu1[i].get_node_distance(bmu2[i])) for i in range(len(bmu1))]
 
         # Calculates the fraction of nodes that aren't neighbors
         te = 1 - xp.mean(xp.array(b2mu_neighbors))
