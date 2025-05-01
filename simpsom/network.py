@@ -426,7 +426,7 @@ class SOMNet:
                 self.xp.isclose(1, batch_bmu1_nodes[j].get_node_distance(batch_bmu2_nodes[j]))
                 for j in range(len(batch_bmu1_nodes))
             ]
-            b2mu_neighbors.extend(batch_neighbors.self.xp.tolist())
+            b2mu_neighbors.extend(batch_neighbors)
     
         # Calculates the fraction of nodes that aren't neighbors
         te = 1 - self.xp.mean(self.xp.array(b2mu_neighbors))
