@@ -404,20 +404,28 @@ class SOMNet:
         return float(qe.get() if self.GPU else qe)
 
     # Used MiniSom _topographic_error_hexagonal as a reference
-    def calculate_te(self) -> float:
+    def calculate_te(self, batch_size: int = 1024) -> float:
         """Calculate Topographic Error (TE).
     
         Returns:
             (float): Proportion of vectors whose BMU and second BMU are not neighbors.
         """
-        # Compute first and second bmus
         bmu1, bmu2 = self.find_2bmu_ix(self.data)
-
-        # Creates a list were neigboors are True (=1)
-        b2mu_neighbors = [self.xp.isclose(1, self.nodes_list[int(bmu1[i])].get_node_distance(self.nodes_list[int(bmu2[i])])) for i in range(len(bmu1))]
-
+        
+        b2mu_neighbors = []
+        for i in range(0, len(bmu1), batch_size):
+            batch_bmu1 = bmu1[i:i + batch_size]
+            batch_bmu2 = bmu2[i:i + batch_size]
+            
+            # Calculate neighbors for the current batch
+            batch_neighbors = [
+                xp.isclose(1, self.nodes_list[int(batch_bmu1[j])].get_node_distance(self.nodes_list[int(batch_bmu2[j])]))
+                for j in range(len(batch_bmu1))
+            ]
+            b2mu_neighbors.extend(batch_neighbors) # Extend the list, not append
+    
         # Calculates the fraction of nodes that aren't neighbors
-        te = 1 - self.xp.mean(self.xp.array(b2mu_neighbors))
+        te = 1 - xp.mean(xp.array(b2mu_neighbors))
         return float(te.get() if self.GPU else te)
     ##############################################################################
     
@@ -620,7 +628,7 @@ class SOMNet:
                         node.weights = node.weights.get()
             
                 # Calculate QE and TE for the current epoch
-                qe = self.calculate_qe(batch_size=512)
+                qe = self.calculate_qe()
                 te = self.calculate_te()
     
                 # Append QE and TE to their respective lists
