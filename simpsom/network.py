@@ -423,7 +423,7 @@ class SOMNet:
             
             # Calculate neighbors for the current batch using the provided get_node_distance
             batch_neighbors = [
-                self.xp.isclose(1, self.get_node_distance(batch_bmu1_nodes[j], batch_bmu2_nodes[j]))
+                self.xp.isclose(1, batch_bmu1_nodes[j].get_node_distance(batch_bmu2_nodes[j]))
                 for j in range(len(batch_bmu1_nodes))
             ]
             b2mu_neighbors.extend(batch_neighbors.tolist())
