@@ -373,7 +373,7 @@ class SOMNet:
         return bmu1, bmu2
 
 
-    def calculate_qe(self, batch_size: int = 1024) -> float:
+    def calculate_qe(self) -> float:
         """Calculate Quantization Error (QE) more memory-efficiently.
 
         Args:
@@ -385,12 +385,22 @@ class SOMNet:
         num_data_points = self.data.shape[0]
         total_distance = self.xp.zeros(1, dtype=self.xp.float32)
 
+
+        bmus_idxs = self.find_bmu_ix(self.data)
+        bmus_weights = self.xp.array([self.nodes_list[int(bmu)].weights for bmu in bmus_idxs])
+        
         for i in range(0, num_data_points, batch_size):
             batch_data = self.data[i:i + batch_size]
             bmus = self.find_bmu_ix(batch_data)
             bmu_weights_batch = self.xp.array([self.nodes_list[int(bmu)].weights for bmu in bmus])
+
+            # This function calculates the distances to all combinations the arrays
             distances_batch = self.distance.pairdist(batch_data, bmu_weights_batch, metric=self.metric)
-            total_distance += self.xp.sum(distances_batch)
+
+            # We only one the combinations corresponding to the same index, so the diagonal
+            actual_distances = self.xp.diag(distances_batch)
+            
+            total_distance += self.xp.sum(actual_distances)
 
         qe = total_distance / num_data_points
         return float(qe.get() if self.GPU else qe)
