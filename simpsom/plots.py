@@ -9,78 +9,13 @@ from pylettes import Distinct20
 
 from simpsom.polygons import Polygon
 
+########################################################
+# Edited by M. Pólvora Fonseca 02/05/2025
 
 def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], polygons_class: Polygon,
              show: bool = True, print_out: bool = False,
-             file_name: str = "./som_plot.png",
+             file_name: str = "./som_plot.png", ax: Optional[Union[plt.Axes, Sequence[plt.Axes]]] = None,
              **kwargs: Tuple[int]) -> Tuple[Figure, plt.Axes]:
-    """Plot a 2D SOM
-
-    Args:
-        centers (list or array): The list of SOM nodes center point coordinates
-            (e.g. node.pos)
-        feature (list or array): The SOM node feature defining the color map
-            (e.g. node.weights, node.diff)
-        polygons_class (polygons): The polygons class carrying information on the
-            map topology.
-        show (bool): Choose to display the plot.
-        print_out (bool): Choose to save the plot to a file.
-        file_name (str): Name of the file where the plot will be saved if
-            print_out is active. Must include the output path.
-        kwargs (dict): Keyword arguments to format the plot:
-            - figsize (tuple(int, int)): the figure size,
-            - title (str): figure title,
-            - cbar_label (str): colorbar label,
-            - fontsize (int): font size of label, title 15% larger, ticks 15% smaller,
-            - cmap (ListedColormap): a custom colormap.
-
-    Returns:
-        fig (figure object): the produced figure object.
-        ax (ax object): the produced axis object.
-    """
-
-    if "figsize" not in kwargs.keys():
-        kwargs["figsize"] = (5, 5)
-    if "title" not in kwargs.keys():
-        kwargs["title"] = "SOM"
-    if "cbar_label" not in kwargs.keys():
-        kwargs["cbar_label"] = "Feature value"
-    if "fontsize" not in kwargs.keys():
-        kwargs["fontsize"] = 12
-
-    fig = plt.figure(figsize=(kwargs["figsize"][0], kwargs["figsize"][1]))
-    ax = polygons_class.draw_map(fig, centers, feature,
-                                 cmap=kwargs['cmap'] if 'cmap' in kwargs
-                                 else plt.get_cmap('viridis'))
-    ax.set_title(kwargs["title"], size=kwargs["fontsize"] * 1.15)
-
-    divider = make_axes_locatable(ax)
-
-    if not np.isnan(feature).all():
-        cax = divider.append_axes("right", size="5%", pad=0.0)
-        cbar = plt.colorbar(ax.collections[0], cax=cax)
-        cbar.set_label(kwargs["cbar_label"], size=kwargs["fontsize"])
-        cbar.ax.tick_params(labelsize=kwargs["fontsize"] * .85)
-        cbar.outline.set_visible(False)
-
-    fig.tight_layout()
-    plt.sca(ax)
-
-    if not file_name.endswith((".png", ".jpg", ".pdf")):
-        file_name += ".png"
-
-    if print_out == True:
-        plt.savefig(file_name, bbox_inches="tight", dpi=300)
-    if show == True:
-        plt.show()
-
-    return fig, ax
-
-
-def line_plot(y_val: Union[np.ndarray, list], x_val: Union[np.ndarray, list] = None,
-              show: bool = True, print_out: bool = False,
-              file_name: str = "./line_plot.png",
-              **kwargs: Tuple[int]) -> Tuple[Figure, plt.Axes]:
     """A simple line plot with maplotlib.
 
     Args: 
@@ -105,62 +40,51 @@ def line_plot(y_val: Union[np.ndarray, list], x_val: Union[np.ndarray, list] = N
         ax (ax object): the produced axis object.
     """
 
-    if "figsize" not in kwargs.keys():
+    if "figsize" not in kwargs:
         kwargs["figsize"] = (5, 5)
-    if "title" not in kwargs.keys():
-        kwargs["title"] = "Line plot"
-    if "xlabel" not in kwargs.keys():
-        kwargs["xlabel"] = "x"
-    if "ylabel" not in kwargs.keys():
-        kwargs["ylabel"] = "y"
-    if "logx" not in kwargs.keys():
-        kwargs["logx"] = False
-    if "logy" not in kwargs.keys():
-        kwargs["logy"] = False
-    if "fontsize" not in kwargs.keys():
+    if "title" not in kwargs:
+        kwargs["title"] = "SOM"
+    if "cbar_label" not in kwargs:
+        kwargs["cbar_label"] = "Feature value"
+    if "fontsize" not in kwargs:
         kwargs["fontsize"] = 12
 
-    fig = plt.figure(figsize=(kwargs["figsize"][0], kwargs["figsize"][1]))
-    ax = fig.add_subplot(111, aspect="equal")
-    plt.sca(ax)
-    plt.grid(False)
+    if ax is None:
+        fig, ax_used = plt.subplots(figsize=kwargs["figsize"])
+    elif isinstance(ax, Sequence):
+        fig = ax[0].figure
+        ax_used = ax[0]
+    else:
+        fig = ax.figure
+        ax_used = ax
 
-    if x_val is None:
-        x_val = range(len(y_val))
-        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+    ax_used = polygons_class.draw_map(fig, centers, feature,
+                                      cmap=kwargs['cmap'] if 'cmap' in kwargs
+                                      else plt.get_cmap('viridis'))
+    ax_used.set_title(kwargs["title"], size=kwargs["fontsize"] * 1.15)
 
-    plt.plot(x_val, y_val, marker="o")
+    divider = make_axes_locatable(ax_used)
 
-    plt.xticks(fontsize=kwargs["fontsize"] * .85)
-    plt.yticks(fontsize=kwargs["fontsize"] * .85)
+    if not np.isnan(feature).all():
+        cax = divider.append_axes("right", size="5%", pad=0.0)
+        cbar = plt.colorbar(ax_used.collections[0], cax=cax)
+        cbar.set_label(kwargs["cbar_label"], size=kwargs["fontsize"])
+        cbar.ax.tick_params(labelsize=kwargs["fontsize"] * .85)
+        cbar.outline.set_visible(False)
 
-    if kwargs["logy"]:
-        ax.set_yscale("log")
-
-    if kwargs["logx"]:
-        ax.set_xscale("log")
-
-    ax.spines["right"].set_visible(False)
-    ax.spines["top"].set_visible(False)
-
-    plt.xlabel(kwargs["xlabel"], fontsize=kwargs["fontsize"])
-    plt.ylabel(kwargs["ylabel"], fontsize=kwargs["fontsize"])
-
-    plt.title(kwargs["title"], size=kwargs["fontsize"] * 1.15)
-
-    ax.set_aspect("auto")
     fig.tight_layout()
+    plt.sca(ax_used)
 
     if not file_name.endswith((".png", ".jpg", ".pdf")):
         file_name += ".png"
 
-    if print_out == True:
+    if print_out:
         plt.savefig(file_name, bbox_inches="tight", dpi=300)
-    if show == True:
+    if show:
         plt.show()
 
-    return fig, ax
-
+    return fig, ax_used
+########################################################
 
 def scatter_on_map(datagroups: Collection[np.ndarray], centers: Collection[np.ndarray],
                    polygons_class: Polygon,
