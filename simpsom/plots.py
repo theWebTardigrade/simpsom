@@ -1,4 +1,4 @@
-from typing import Optional, Union, Collection, Tuple
+from typing import Optional, Union, Collection, Tuple, Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
