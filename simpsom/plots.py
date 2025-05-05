@@ -51,7 +51,7 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
     if "fontsize" not in kwargs.keys():
         kwargs["fontsize"] = 12
 
-    fig = plt.figure(figsize=(kwargs["figsize"][0], kwargs["figsize"][1]))
+    fig = plt.figure(figsize=(kwargs["figsize"][0], kwargs["figsize"][1]), dpi=100)
     ax = polygons_class.draw_map(fig, centers, feature,
                                  cmap=kwargs['cmap'] if 'cmap' in kwargs
                                  else plt.get_cmap('viridis'))
@@ -73,7 +73,7 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
         file_name += ".png"
 
     if print_out == True:
-        plt.savefig(file_name, bbox_inches="tight", dpi=300)
+        plt.savefig(file_name, dpi=300)
     if show == True:
         plt.show()
 
