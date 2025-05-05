@@ -13,11 +13,14 @@ from simpsom.polygons import Polygon
 ########################################################
 # Edited by M. Pólvora Fonseca 04/05/2025
 
-def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], polygons_class: Polygon,
-             show: bool = True, print_out: bool = False,
+def plot_map(centers: Collection[np.ndarray],
+             feature: Collection[np.ndarray],
+             polygons_class: Polygon,
+             show: bool = True,
+             print_out: bool = False,
              file_name: str = "./som_plot.png",
              ax: Optional[Union[plt.Axes, Sequence[plt.Axes]]] = None,
-             **kwargs: Tuple[int]) -> Tuple[Figure, plt.Axes]:
+             **kwargs: dict) -> Tuple[Figure, plt.Axes]:
     """Plot a 2D SOM
 
     Args:
@@ -42,7 +45,7 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
 
     Returns:
         fig (figure object): the produced figure object.
-        ax_used (ax object): the produced axis object.
+        ax (ax object): the produced axis object.
     """
 
     if "figsize" not in kwargs:
@@ -56,30 +59,34 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
 
     if ax is None:
         fig, ax_used = plt.subplots(figsize=kwargs["figsize"])
-        ax_used.axis('off')  # Turn off axis for individual plots
     elif isinstance(ax, Sequence):
         fig = ax[0].figure
         ax_used = ax[0]
-        ax_used.axis('off')  # Turn off axis for subplots
     else:
         fig = ax.figure
         ax_used = ax
-        ax_used.axis('off')  # Turn off axis for single passed axes
 
-    ax_used = polygons_class.draw_map(fig, centers, feature,
+    # Draw the polygons
+    collection = polygons_class.draw_map(fig, centers, feature,
                                      cmap=kwargs.get('cmap', plt.get_cmap('viridis')))
     ax_used.set_title(kwargs["title"], size=kwargs["fontsize"] * 1.15)
+    ax_used.axis('off')  # Remove the default axes
 
-    divider = make_axes_locatable(ax_used)
-
-    if not np.isnan(np.asarray(feature)).all():
-        cax = divider.append_axes("right", size="5%", pad=0.0)
-        cbar = plt.colorbar(ax_used.collections[0], cax=cax)
+    # Add the colorbar only if feature data is provided and not all NaN
+    if feature is not None and not np.isnan(np.asarray(feature)).all():
+        divider = make_axes_locatable(ax_used)
+        cax = divider.append_axes("right", size="5%", pad=0.05)  # Add some padding
+        cbar = plt.colorbar(collection, cax=cax)
         cbar.set_label(kwargs["cbar_label"], size=kwargs["fontsize"])
         cbar.ax.tick_params(labelsize=kwargs["fontsize"] * .85)
         cbar.outline.set_visible(False)
+    else:
+        # Create a dummy colorbar, so tight_layout does not complain
+        divider = make_axes_locatable(ax_used)
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        cax.set_visible(False)
 
-    fig.tight_layout()
+    fig.tight_layout()  # Use tight_layout() to adjust spacing
     plt.sca(ax_used)
 
     if not file_name.endswith((".png", ".jpg", ".pdf")):
@@ -87,9 +94,7 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
 
     if print_out:
         plt.savefig(file_name, bbox_inches="tight", dpi=300)
-    if show and ax is None:
-        plt.show()
-    elif show and isinstance(ax, plt.Axes):
+    if show:
         plt.show()
 
     return fig, ax_used
