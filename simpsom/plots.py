@@ -9,35 +9,40 @@ from pylettes import Distinct20
 
 from simpsom.polygons import Polygon
 
+
 ########################################################
-# Edited by M. Pólvora Fonseca 02/05/2025
+# Edited by M. Pólvora Fonseca 04/05/2025
 
 def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], polygons_class: Polygon,
              show: bool = True, print_out: bool = False,
-             file_name: str = "./som_plot.png", ax: Optional[Union[plt.Axes, Sequence[plt.Axes]]] = None,
+             file_name: str = "./som_plot.png",
+             ax: Optional[Union[plt.Axes, Sequence[plt.Axes]]] = None,
              **kwargs: Tuple[int]) -> Tuple[Figure, plt.Axes]:
-    """A simple line plot with maplotlib.
+    """Plot a 2D SOM
 
-    Args: 
-        y_val (array or list): values along the y axis.
-        x_val (array or list): values along the x axis,
-            if none, these will be inferred from the shape of y_val.
+    Args:
+        centers (list or array): The list of SOM nodes center point coordinates
+            (e.g. node.pos)
+        feature (list or array): The SOM node feature defining the color map
+            (e.g. node.weights, node.diff)
+        polygons_class (polygons): The polygons class carrying information on the
+            map topology.
         show (bool): Choose to display the plot.
         print_out (bool): Choose to save the plot to a file.
         file_name (str): Name of the file where the plot will be saved if
             print_out is active. Must include the output path.
+        ax (Optional[Union[plt.Axes, Sequence[plt.Axes]]]): An existing axes object or a sequence of axes objects.
+            If a sequence is provided, the first axes object will be used for plotting.
         kwargs (dict): Keyword arguments to format the plot:
             - figsize (tuple(int, int)): the figure size,
             - title (str): figure title,
-            - xlabel (str): x-axis label,
-            - ylabel (str): y-axis label,
-            - logx (bool): if True set x-axis to logarithmic scale,
-            - logy (bool): if True set y-axis to logarithmic scale,
-            - fontsize (int): font size of label, title 15% larger, ticks 15% smaller.
+            - cbar_label (str): colorbar label,
+            - fontsize (int): font size of label, title 15% larger, ticks 15% smaller,
+            - cmap (ListedColormap): a custom colormap.
 
     Returns:
         fig (figure object): the produced figure object.
-        ax (ax object): the produced axis object.
+        ax_used (ax object): the produced axis object.
     """
 
     if "figsize" not in kwargs:
@@ -51,21 +56,23 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
 
     if ax is None:
         fig, ax_used = plt.subplots(figsize=kwargs["figsize"])
+        ax_used.axis('off')  # Turn off axis for individual plots
     elif isinstance(ax, Sequence):
         fig = ax[0].figure
         ax_used = ax[0]
+        ax_used.axis('off')  # Turn off axis for subplots
     else:
         fig = ax.figure
         ax_used = ax
+        ax_used.axis('off')  # Turn off axis for single passed axes
 
     ax_used = polygons_class.draw_map(fig, centers, feature,
-                                      cmap=kwargs['cmap'] if 'cmap' in kwargs
-                                      else plt.get_cmap('viridis'))
+                                     cmap=kwargs.get('cmap', plt.get_cmap('viridis')))
     ax_used.set_title(kwargs["title"], size=kwargs["fontsize"] * 1.15)
 
     divider = make_axes_locatable(ax_used)
 
-    if not np.isnan(feature).all():
+    if not np.isnan(np.asarray(feature)).all():
         cax = divider.append_axes("right", size="5%", pad=0.0)
         cbar = plt.colorbar(ax_used.collections[0], cax=cax)
         cbar.set_label(kwargs["cbar_label"], size=kwargs["fontsize"])
@@ -80,7 +87,9 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
 
     if print_out:
         plt.savefig(file_name, bbox_inches="tight", dpi=300)
-    if show:
+    if show and ax is None:
+        plt.show()
+    elif show and isinstance(ax, plt.Axes):
         plt.show()
 
     return fig, ax_used
