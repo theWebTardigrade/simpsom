@@ -86,6 +86,90 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
     return fig, ax_used
 ########################################################
 
+def line_plot(y_val: Union[np.ndarray, list], x_val: Union[np.ndarray, list] = None,
+              show: bool = True, print_out: bool = False,
+              file_name: str = "./line_plot.png",
+              **kwargs: Tuple[int]) -> Tuple[Figure, plt.Axes]:
+    """A simple line plot with maplotlib.
+
+    Args: 
+        y_val (array or list): values along the y axis.
+        x_val (array or list): values along the x axis,
+            if none, these will be inferred from the shape of y_val.
+        show (bool): Choose to display the plot.
+        print_out (bool): Choose to save the plot to a file.
+        file_name (str): Name of the file where the plot will be saved if
+            print_out is active. Must include the output path.
+        kwargs (dict): Keyword arguments to format the plot:
+            - figsize (tuple(int, int)): the figure size,
+            - title (str): figure title,
+            - xlabel (str): x-axis label,
+            - ylabel (str): y-axis label,
+            - logx (bool): if True set x-axis to logarithmic scale,
+            - logy (bool): if True set y-axis to logarithmic scale,
+            - fontsize (int): font size of label, title 15% larger, ticks 15% smaller.
+
+    Returns:
+        fig (figure object): the produced figure object.
+        ax (ax object): the produced axis object.
+    """
+
+    if "figsize" not in kwargs.keys():
+        kwargs["figsize"] = (5, 5)
+    if "title" not in kwargs.keys():
+        kwargs["title"] = "Line plot"
+    if "xlabel" not in kwargs.keys():
+        kwargs["xlabel"] = "x"
+    if "ylabel" not in kwargs.keys():
+        kwargs["ylabel"] = "y"
+    if "logx" not in kwargs.keys():
+        kwargs["logx"] = False
+    if "logy" not in kwargs.keys():
+        kwargs["logy"] = False
+    if "fontsize" not in kwargs.keys():
+        kwargs["fontsize"] = 12
+
+    fig = plt.figure(figsize=(kwargs["figsize"][0], kwargs["figsize"][1]))
+    ax = fig.add_subplot(111, aspect="equal")
+    plt.sca(ax)
+    plt.grid(False)
+
+    if x_val is None:
+        x_val = range(len(y_val))
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+
+    plt.plot(x_val, y_val, marker="o")
+
+    plt.xticks(fontsize=kwargs["fontsize"] * .85)
+    plt.yticks(fontsize=kwargs["fontsize"] * .85)
+
+    if kwargs["logy"]:
+        ax.set_yscale("log")
+
+    if kwargs["logx"]:
+        ax.set_xscale("log")
+
+    ax.spines["right"].set_visible(False)
+    ax.spines["top"].set_visible(False)
+
+    plt.xlabel(kwargs["xlabel"], fontsize=kwargs["fontsize"])
+    plt.ylabel(kwargs["ylabel"], fontsize=kwargs["fontsize"])
+
+    plt.title(kwargs["title"], size=kwargs["fontsize"] * 1.15)
+
+    ax.set_aspect("auto")
+    fig.tight_layout()
+
+    if not file_name.endswith((".png", ".jpg", ".pdf")):
+        file_name += ".png"
+
+    if print_out == True:
+        plt.savefig(file_name, bbox_inches="tight", dpi=300)
+    if show == True:
+        plt.show()
+
+    return fig, ax
+
 def scatter_on_map(datagroups: Collection[np.ndarray], centers: Collection[np.ndarray],
                    polygons_class: Polygon,
                    color_val: bool = None,
