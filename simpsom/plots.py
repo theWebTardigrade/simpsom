@@ -8,12 +8,13 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from pylettes import Distinct20
 
 from simpsom.polygons import Polygon
+import matplotlib.ticker as mticker
 
 
 ########################################################
 # Edited by M. Pólvora Fonseca 04/05/2025
 
-def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], polygons_class: Polygon,
+def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], polygons_class: Figure,
              show: bool = True, print_out: bool = False,
              file_name: str = "./som_plot.png",
              **kwargs: Tuple[int]) -> Tuple[Figure, plt.Axes]:
@@ -21,21 +22,22 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
 
     Args:
         centers (list or array): The list of SOM nodes center point coordinates
-            (e.g. node.pos)
+                           (e.g. node.pos)
         feature (list or array): The SOM node feature defining the color map
-            (e.g. node.weights, node.diff)
-        polygons_class (polygons): The polygons class carrying information on the
-            map topology.
+                           (e.g. node.weights, node.diff)
+        polygons_class (Figure): The polygons class carrying information on the
+                           map topology.
         show (bool): Choose to display the plot.
         print_out (bool): Choose to save the plot to a file.
         file_name (str): Name of the file where the plot will be saved if
-            print_out is active. Must include the output path.
+                           print_out is active. Must include the output path.
         kwargs (dict): Keyword arguments to format the plot:
             - figsize (tuple(int, int)): the figure size,
             - title (str): figure title,
             - cbar_label (str): colorbar label,
             - fontsize (int): font size of label, title 15% larger, ticks 15% smaller,
             - cmap (ListedColormap): a custom colormap.
+            - cbar_decimals (int): Number of decimal places for the colorbar ticks.
 
     Returns:
         fig (figure object): the produced figure object.
@@ -50,12 +52,14 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
         kwargs["cbar_label"] = "Feature value"
     if "fontsize" not in kwargs.keys():
         kwargs["fontsize"] = 12
+    if "cbar_decimals" not in kwargs.keys():
+        kwargs["cbar_decimals"] = 2  # Default to 2 decimal places
 
     fig = plt.figure(figsize=(kwargs["figsize"][0], kwargs["figsize"][1]), dpi=100)
-    ax = polygons_class.draw_map(fig, centers, feature,
-                                 cmap=kwargs['cmap'] if 'cmap' in kwargs
-                                 else plt.get_cmap('viridis'))
-    ax.set_title(kwargs["title"], size=kwargs["fontsize"] * 1.15)
+    ax = polygons_class.add_subplot(111) # Assuming polygons_class has a draw_map method
+    polygons_class.draw_map(fig, centers, feature, ax=ax,
+                             cmap=kwargs.get('cmap', plt.get_cmap('viridis')))
+    ax.set_title(kwargs["title"], size=int(kwargs["fontsize"] * 1.15))
 
     divider = make_axes_locatable(ax)
 
@@ -63,8 +67,12 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
         cax = divider.append_axes("right", size="5%", pad=0.0)
         cbar = plt.colorbar(ax.collections[0], cax=cax)
         cbar.set_label(kwargs["cbar_label"], size=kwargs["fontsize"])
-        cbar.ax.tick_params(labelsize=kwargs["fontsize"] * .85)
+        cbar.ax.tick_params(labelsize=int(kwargs["fontsize"] * .85))
         cbar.outline.set_visible(False)
+
+        # Format the colorbar tick labels
+        formatter = mticker.FormatStrFormatter(f'%.{kwargs["cbar_decimals"]}f')
+        cbar.ax.yaxis.set_major_formatter(formatter)
 
     fig.tight_layout()
     plt.sca(ax)
