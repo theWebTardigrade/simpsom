@@ -53,7 +53,7 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
     if "fontsize" not in kwargs.keys():
         kwargs["fontsize"] = 12
     if "cbar_decimals" not in kwargs.keys():
-        kwargs["cbar_decimals"] = 2  # Default to 2 decimal places
+        kwargs["cbar_decimals"] = 3  # Default to 2 decimal places
 
     fig = plt.figure(figsize=(kwargs["figsize"][0], kwargs["figsize"][1]), dpi=100)
     ax = polygons_class.add_subplot(111) # Assuming polygons_class has a draw_map method
