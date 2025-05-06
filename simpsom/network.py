@@ -825,6 +825,87 @@ class SOMNet:
             logger.info("Feature map will be saved to:\n" +
                         kwargs["file_name"])
 
+##############################################################################################################
+# Added to plot all features in the same image
+
+    def plot_all_feats(self, feature_indices: list = None, show: bool = False, print_out: bool = True,
+                             **kwargs: Tuple[int]) -> None:
+        """ Wrapper function to plot trained 2D SOM maps
+        color-coded according to given features in the same figure.
+
+        Args:
+            feature_indices (list, int): A list of feature index numbers to use as color maps.
+                                         If None, all features will be plotted.
+            show (bool): Choose to display the plot.
+            print_out (bool): Choose to save the plot to a file.
+            kwargs (dict): Keyword arguments to format the plot, such as
+                - figsize (tuple(int, int)), the figure size;
+                - title (str), figure title;
+                - cbar_label (str), colorbar label;
+                - fontsize (int), font size of label, the title 15% larger, ticks 15% smaller;
+                - cmap (ListedColormap), a custom cmap.
+                - filename (str), the base filename for saving if print_out is True.
+        """
+        if feature_indices is None:
+            feature_indices = range(len(self.nodes_list[0].weights))
+
+        num_features = len(feature_indices)
+        if num_features == 0:
+            logger.warning("No feature indices provided for plotting.")
+            return
+
+        rows = int(np.ceil(np.sqrt(num_features)))
+        cols = int(np.ceil(num_features / rows))
+
+        if "figsize" not in kwargs.keys():
+            kwargs["figsize"] = (5 * cols, 5 * rows)
+        if "title" not in kwargs.keys():
+            kwargs["title"] = "SOM Features"
+        if "filename" not in kwargs.keys():
+            kwargs["filename"] = os.path.join(self.output_path, "som_features.png")
+
+        fig, axes = plt.subplots(rows, cols, figsize=kwargs["figsize"], dpi=300)
+        axes = axes.flatten()
+
+        for i, feature_ix in enumerate(feature_indices):
+            if i < len(axes):
+                ax = axes[i]
+                feature_data = [node.weights[feature_ix] for node in self.nodes_list]
+                title = kwargs.get("title", "SOM Feature") + f" {feature_ix}"
+                cbar_label = kwargs.get("cbar_label", "Feature Value")
+                fontsize = kwargs.get("fontsize", 12)
+                cmap = kwargs.get("cmap")
+
+                _, _ = plot_map([[node.pos[0], node.pos[1]] for node in self.nodes_list],
+                                feature_data,
+                                self.polygons,
+                                ax=ax,  # Pass the current subplot axis
+                                title=title,
+                                cbar_label=cbar_label,
+                                fontsize=fontsize,
+                                cmap=cmap)
+                ax.set_title(title, size=int(fontsize * 1.15))
+                ax.tick_params(labelsize=int(fontsize * 0.85))
+
+        # Remove any unused subplots
+        for j in range(num_features, len(axes)):
+            fig.delaxes(axes[j])
+
+        fig.suptitle(kwargs["title"], fontsize=kwargs.get("fontsize", 12) * 1.3)
+        fig.tight_layout(rect=[0, 0.03, 1, 0.95]) # Adjust layout to make space for subtitle
+
+        if print_out:
+            plt.savefig(kwargs["filename"], bbox_inches="tight", figsize=kwargs["figsize"], dpi=300)
+            logger.info(f"Feature maps will be saved to:\n{kwargs['filename']}")
+
+        if show:
+            plt.show()
+
+
+##############################################################################################################
+
+
+
     def plot_map_by_difference(self, show: bool = False, print_out: bool = True,
                                **kwargs: Tuple[int]) -> None:
         """ Wrapper function to plot a trained 2D SOM map
