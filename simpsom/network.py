@@ -16,6 +16,11 @@ from simpsom.plots import plot_map, line_plot, scatter_on_map
 from simpsom.polygons import Squares, Hexagons, Polygon
 
 
+#####################################################################
+import matplotlib.pyplot as plt
+#####################################################################
+
+
 class SOMNet:
     """ Kohonen SOM Network class. """
 
