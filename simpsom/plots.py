@@ -53,10 +53,10 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
     if "fontsize" not in kwargs.keys():
         kwargs["fontsize"] = 12
     if "cbar_decimals" not in kwargs.keys():
-        kwargs["cbar_decimals"] = 3  # Default to 2 decimal places
+        kwargs["cbar_decimals"] = 3 
 
     fig = plt.figure(figsize=(kwargs["figsize"][0], kwargs["figsize"][1]), dpi=100)
-    ax = polygons_class.add_subplot(111) # Assuming polygons_class has a draw_map method
+    ax = polygons_class.add_subplot(111) 
     polygons_class.draw_map(fig, centers, feature, ax=ax,
                              cmap=kwargs.get('cmap', plt.get_cmap('viridis')))
     ax.set_title(kwargs["title"], size=int(kwargs["fontsize"] * 1.15))
@@ -70,9 +70,7 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
         cbar.ax.tick_params(labelsize=int(kwargs["fontsize"] * .85))
         cbar.outline.set_visible(False)
 
-        # Format the colorbar tick labels
-        formatter = mticker.FormatStrFormatter(f'%.{kwargs["cbar_decimals"]}f')
-        cbar.ax.yaxis.set_major_formatter(formatter)
+        
 
     fig.tight_layout()
     plt.sca(ax)
@@ -81,7 +79,7 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
         file_name += ".png"
 
     if print_out == True:
-        plt.savefig(file_name, dpi=300)
+        plt.savefig(file_name, dpi=300, figsize=(kwargs["figsize"][0], kwargs["figsize"][1]))
     if show == True:
         plt.show()
 
