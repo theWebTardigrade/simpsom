@@ -66,8 +66,10 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
         cbar.set_label(kwargs["cbar_label"], size=kwargs["fontsize"])
         cbar.ax.tick_params(labelsize=kwargs["fontsize"] * .85)
         cbar.outline.set_visible(False)
-        cbar.formatter.set_format('%.3f')
-        cbar.update_ticks()
+
+        # Fix number of decimals
+        ticks = cbar.get_ticks()
+        cbar.set_ticklabels([f'{t:.3f}' for t in ticks])
 
     fig.tight_layout()
     plt.sca(ax)
