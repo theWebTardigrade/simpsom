@@ -74,7 +74,7 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
         file_name += ".png"
 
     if print_out == True:
-        plt.savefig(file_name, bbox_inches="tight", figsize=(kwargs["figsize"][0], kwargs["figsize"][1]), dpi=300)
+        plt.savefig(file_name, dpi=300)
     if show == True:
         plt.show()
 
