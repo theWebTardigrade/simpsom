@@ -372,7 +372,7 @@ class SOMNet:
                                        metric=self.metric)
         
         bmu1 = self.xp.argmin(dists, axis=1)
-        dists[bmu1] = 1e10 # High value to turn the 2nd bmu into the 1st bmu
+        dists[np.arange(dists.shape[0]), bmu1] = 1e10 # High value to turn the 2nd bmu into the 1st bmu
         bmu2 = self.xp.argmin(dists, axis=1) 
         
         return bmu1, bmu2
