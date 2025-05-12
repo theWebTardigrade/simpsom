@@ -624,7 +624,7 @@ class SOMNet:
             # Added by M. Pólvora Fonseca 30/04/2025
             # Copied from I.Matute @is-mat-tron
 
-                if ((n_iter+1) < self.epochs):
+                if ((n_iter+1) <= self.epochs):
 
                     # Revert to object oriented
                     all_weights = all_weights.reshape(self.width * self.height, self.data.shape[1])
