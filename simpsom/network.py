@@ -622,9 +622,10 @@ class SOMNet:
 
             ##########################################################################################
             # Added by M. Pólvora Fonseca 30/04/2025
+            # Saves every the first and the before last iteration
             # Copied from I.Matute @is-mat-tron
-
-                if ((n_iter+1) <= self.epochs):
+    
+                if ((n_iter+1) < self.epochs):
 
                     # Revert to object oriented
                     all_weights = all_weights.reshape(self.width * self.height, self.data.shape[1])
@@ -635,7 +636,7 @@ class SOMNet:
                         for node in self.nodes_list:
                             node.weights = node.weights.get()
                     
-                    self.save_map(file_name = 'trained_som_' + str(n_iter+1) + 'epoch'+ '.npy')   # Added by I. Matute to save map after each epoch
+                    self.save_map(file_name = 'trained_som_' + str(n_iter) + 'epoch'+ '.npy')   # Added by I. Matute to save map after each epoch
 
                     all_weights = self.xp.array([n.weights for n in self.nodes_list], dtype=self.xp.float32)
                     all_weights = all_weights.reshape(self.width, self.height, self.data.shape[1])  
