@@ -430,7 +430,7 @@ class SOMNet:
                 distances = self.xp.sqrt(self.xp.sum(self.xp.square(bmu1_pos - bmu2_pos), axis=-1))
     
             # Neighbor if distance is close to 1
-            neighbor_flags = self.xp.isclose(distances, 1)
+            neighbor_flags = distances < 1.1
             neighbor_count += self.xp.sum(neighbor_flags)
             total += len(bmu1_batch)
     
