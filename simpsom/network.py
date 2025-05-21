@@ -377,40 +377,29 @@ class SOMNet:
         
         return bmu1, bmu2
 
-
+    # This is an 'efficient' version from CHAT-GPT
     def calculate_qe(self, batch_size: int = 1024) -> float:
-        """Calculate Quantization Error (QE) more memory-efficiently.
-
-        Args:
-            batch_size (int): Size of the data chunks to process.
-
-        Returns:
-            (float): Average distance between input vectors and their BMUs.
-        """
+        """Efficiently calculate Quantization Error (QE) with Euclidean metric."""
         num_data_points = self.data.shape[0]
-        total_distance = self.xp.zeros(1, dtype=self.xp.float32)
-
-
-        bmus_idxs = self.find_bmu_ix(self.data)
-        bmus_weights = self.xp.array([self.nodes_list[int(bmu)].weights for bmu in bmus_idxs])
-        
+        total_distance = 0.0
+    
+        # Precompute BMU indices and their corresponding weights
+        bmu_idxs = self.find_bmu_ix(self.data)
+        bmu_weights_all = self.xp.stack([self.nodes_list[int(bmu)].weights for bmu in bmu_idxs])
+    
         for i in range(0, num_data_points, batch_size):
             batch_data = self.data[i:i + batch_size]
-            bmus = self.find_bmu_ix(batch_data)
-            bmu_weights_batch = self.xp.array([self.nodes_list[int(bmu)].weights for bmu in bmus])
-
-            # This function calculates the distances to all combinations the arrays
-            distances_batch = self.distance.pairdist(batch_data, bmu_weights_batch, metric=self.metric)
-
-            # We only one the combinations corresponding to the same index, so the diagonal
-            actual_distances = self.xp.diag(distances_batch)
-            
-            total_distance += self.xp.sum(actual_distances)
-
+            bmu_weights_batch = bmu_weights_all[i:i + batch_size]
+    
+            # Vectorized Euclidean distance for 1-to-1 rows
+            distances = self.xp.sqrt(self.xp.sum((batch_data - bmu_weights_batch) ** 2, axis=1))
+            total_distance += self.xp.sum(distances)
+    
         qe = total_distance / num_data_points
         return float(qe.get() if self.GPU else qe)
 
     # Used MiniSom _topographic_error_hexagonal as a reference
+    # This is an 'efficient' version from CHAT-GPT
     def calculate_te(self, batch_size: int = 1024) -> float:
         """Fully GPU-optimized Topographic Error (TE) calculation with CuPy."""
         bmu1, bmu2 = self.find_2bmu_ix(self.data)
