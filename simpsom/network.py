@@ -412,31 +412,40 @@ class SOMNet:
 
     # Used MiniSom _topographic_error_hexagonal as a reference
     def calculate_te(self, batch_size: int = 1024) -> float:
-        """Calculate Topographic Error (TE).
-    
-        Returns:
-            (float): Proportion of vectors whose BMU and second BMU are not neighbors.
-        """
+        """Fully GPU-optimized Topographic Error (TE) calculation with CuPy."""
         bmu1, bmu2 = self.find_2bmu_ix(self.data)
-        
-        b2mu_neighbors = []
+    
+        # CuPy array of node positions, shape: (num_nodes, 2)
+        node_positions = self.xp.stack([node.pos for node in self.nodes_list])
+    
+        total = 0
+        neighbor_count = 0
+    
         for i in range(0, len(bmu1), batch_size):
-            batch_bmu1_indices = bmu1[i:i + batch_size]
-            batch_bmu2_indices = bmu2[i:i + batch_size]
+            bmu1_batch = bmu1[i:i + batch_size]
+            bmu2_batch = bmu2[i:i + batch_size]
     
-            # Get the actual SOMNode objects for the batch.  This is crucial.
-            batch_bmu1_nodes = [self.nodes_list[int(idx)] for idx in batch_bmu1_indices]
-            batch_bmu2_nodes = [self.nodes_list[int(idx)] for idx in batch_bmu2_indices]
-            
-            # Calculate neighbors for the current batch using the provided get_node_distance
-            batch_neighbors = [
-                self.xp.isclose(1, batch_bmu1_nodes[j].get_node_distance(batch_bmu2_nodes[j]))
-                for j in range(len(batch_bmu1_nodes))
-            ]
-            b2mu_neighbors.extend(batch_neighbors)
+            # Batch positions
+            bmu1_pos = node_positions[bmu1_batch]
+            bmu2_pos = node_positions[bmu2_batch]
     
-        # Calculates the fraction of nodes that aren't neighbors
-        te = 1 - self.xp.mean(self.xp.array(b2mu_neighbors))
+            # Vectorized distance with or without PBC
+            if self.PBC:
+                distances = self.polygons.distance_pbc(
+                    bmu1_pos, bmu2_pos,
+                    (self.width, self.height),
+                    lambda x, y: self.xp.sqrt(self.xp.sum(self.xp.square(x - y), axis=-1)),
+                    xp=self.xp
+                )
+            else:
+                distances = self.xp.sqrt(self.xp.sum(self.xp.square(bmu1_pos - bmu2_pos), axis=-1))
+    
+            # Neighbor if distance is close to 1
+            neighbor_flags = self.xp.isclose(distances, 1)
+            neighbor_count += self.xp.sum(neighbor_flags)
+            total += len(bmu1_batch)
+    
+        te = 1 - (neighbor_count / total)
         return float(te.get() if self.GPU else te)
     ##############################################################################
     
