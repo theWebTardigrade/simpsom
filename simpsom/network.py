@@ -433,7 +433,7 @@ class SOMNet:
             
             # Calculates the fraction of nodes that aren't neighbors
             te = 1 - self.xp.mean(self.xp.array(b2mu_neighbors))
-            return float(te.get() if self.GPU else te
+            return float(te.get() if self.GPU else te)
     ##############################################################################
     
     def train(self, train_algo: str = "batch", epochs: int = -1,
