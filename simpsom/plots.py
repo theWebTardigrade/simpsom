@@ -56,7 +56,7 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
     ax = polygons_class.draw_map(fig, centers, feature,
                                  cmap=kwargs['cmap'] if 'cmap' in kwargs
                                  else plt.get_cmap('viridis'))
-    ax.set_title(kwargs["title"], size=kwargs["fontsize"] * 1.15)
+    ax.set_title(kwargs["title"], size=kwargs["fontsize"])
 
     divider = make_axes_locatable(ax)
 
@@ -64,8 +64,13 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
         cax = divider.append_axes("right", size="5%", pad=0.0)
         cbar = plt.colorbar(ax.collections[0], cax=cax)
         cbar.set_label(kwargs["cbar_label"], size=kwargs["fontsize"])
-        cbar.ax.tick_params(labelsize=kwargs["fontsize"] * .85)
+        cbar.ax.tick_params(labelsize=kwargs["fontsize"] )
         cbar.outline.set_visible(False)
+
+        # Sync height with main axis
+        pos_ax = ax.get_position()
+        pos_cax = cax.get_position()
+        cax.set_position([pos_cax.x0, pos_ax.y0, pos_cax.width, pos_ax.height])
 
         # Fix number of decimals
         ticks = cbar.get_ticks()
