@@ -377,65 +377,66 @@ class SOMNet:
         
         return bmu1, bmu2
 
-    # This is an 'efficient' version from CHAT-GPT
-    def calculate_qe(self, batch_size: int = 1024) -> float:
-        """Efficiently calculate Quantization Error (QE) with Euclidean metric."""
-        num_data_points = self.data.shape[0]
-        total_distance = 0.0
+     def calculate_qe(self, batch_size: int = 1024) -> float:
+            """Calculate Quantization Error (QE) more memory-efficiently.
     
-        # Precompute BMU indices and their corresponding weights
-        bmu_idxs = self.find_bmu_ix(self.data)
-        bmu_weights_all = self.xp.stack([self.nodes_list[int(bmu)].weights for bmu in bmu_idxs])
+            Args:
+                batch_size (int): Size of the data chunks to process.
     
-        for i in range(0, num_data_points, batch_size):
-            batch_data = self.data[i:i + batch_size]
-            bmu_weights_batch = bmu_weights_all[i:i + batch_size]
+            Returns:
+                (float): Average distance between input vectors and their BMUs.
+            """
+            num_data_points = self.data.shape[0]
+            total_distance = self.xp.zeros(1, dtype=self.xp.float32)
     
-            # Vectorized Euclidean distance for 1-to-1 rows
-            distances = self.xp.sqrt(self.xp.sum((batch_data - bmu_weights_batch) ** 2, axis=1))
-            total_distance += self.xp.sum(distances)
     
-        qe = total_distance / num_data_points
-        return float(qe.get() if self.GPU else qe)
+            bmus_idxs = self.find_bmu_ix(self.data)
+            bmus_weights = self.xp.array([self.nodes_list[int(bmu)].weights for bmu in bmus_idxs])
+            
+            for i in range(0, num_data_points, batch_size):
+                batch_data = self.data[i:i + batch_size]
+                bmus = self.find_bmu_ix(batch_data)
+                bmu_weights_batch = self.xp.array([self.nodes_list[int(bmu)].weights for bmu in bmus])
+    
+                # This function calculates the distances to all combinations the arrays
+                distances_batch = self.distance.pairdist(batch_data, bmu_weights_batch, metric=self.metric)
+    
+                # We only one the combinations corresponding to the same index, so the diagonal
+                actual_distances = self.xp.diag(distances_batch)
+                
+                total_distance += self.xp.sum(actual_distances)
+    
+            qe = total_distance / num_data_points
+            return float(qe.get() if self.GPU else qe
 
     # Used MiniSom _topographic_error_hexagonal as a reference
-    # This is an 'efficient' version from CHAT-GPT
     def calculate_te(self, batch_size: int = 1024) -> float:
-        """Fully GPU-optimized Topographic Error (TE) calculation with CuPy."""
+        """Calculate Topographic Error (TE).
+    
+        Returns:
+            (float): Proportion of vectors whose BMU and second BMU are not neighbors.
+        """
         bmu1, bmu2 = self.find_2bmu_ix(self.data)
-    
-        # CuPy array of node positions, shape: (num_nodes, 2)
-        node_positions = self.xp.stack([node.pos for node in self.nodes_list])
-    
-        total = 0
-        neighbor_count = 0
-    
+        
+        b2mu_neighbors = []
         for i in range(0, len(bmu1), batch_size):
-            bmu1_batch = bmu1[i:i + batch_size]
-            bmu2_batch = bmu2[i:i + batch_size]
+            batch_bmu1_indices = bmu1[i:i + batch_size]
+            batch_bmu2_indices = bmu2[i:i + batch_size]
     
-            # Batch positions
-            bmu1_pos = node_positions[bmu1_batch]
-            bmu2_pos = node_positions[bmu2_batch]
+            # Get the actual SOMNode objects for the batch.  This is crucial.
+            batch_bmu1_nodes = [self.nodes_list[int(idx)] for idx in batch_bmu1_indices]
+            batch_bmu2_nodes = [self.nodes_list[int(idx)] for idx in batch_bmu2_indices]
+            
+            # Calculate neighbors for the current batch using the provided get_node_distance
+            batch_neighbors = [
+                (batch_bmu1_nodes[j].get_node_distance(batch_bmu2_nodes[j]))<1.2
+                for j in range(len(batch_bmu1_nodes))
+            ]
+            b2mu_neighbors.extend(batch_neighbors)
     
-            # Vectorized distance with or without PBC
-            if self.PBC:
-                distances = self.polygons.distance_pbc(
-                    bmu1_pos, bmu2_pos,
-                    (self.width, self.height),
-                    lambda x, y: self.xp.sqrt(self.xp.sum(self.xp.square(x - y), axis=-1)),
-                    xp=self.xp
-                )
-            else:
-                distances = self.xp.sqrt(self.xp.sum(self.xp.square(bmu1_pos - bmu2_pos), axis=-1))
-    
-            # Neighbor if distance is close to 1
-            neighbor_flags = distances < 1.1
-            neighbor_count += self.xp.sum(neighbor_flags)
-            total += len(bmu1_batch)
-    
-        te = 1 - (neighbor_count / total)
-        return float(te.get() if self.GPU else te)
+        # Calculates the fraction of nodes that aren't neighbors
+        te = 1 - self.xp.mean(self.xp.array(b2mu_neighbors))
+        return float(te.get() if self.GPU else te
     ##############################################################################
     
     def train(self, train_algo: str = "batch", epochs: int = -1,
