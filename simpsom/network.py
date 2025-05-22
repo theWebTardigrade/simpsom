@@ -411,32 +411,32 @@ class SOMNet:
 
     # Used MiniSom _topographic_error_hexagonal as a reference
     def calculate_te(self, batch_size: int = 1024) -> float:
-        """Calculate Topographic Error (TE).
-    
-        Returns:
-            (float): Proportion of vectors whose BMU and second BMU are not neighbors.
-        """
-        bmu1, bmu2 = self.find_2bmu_ix(self.data)
-        
-        b2mu_neighbors = []
-        for i in range(0, len(bmu1), batch_size):
-            batch_bmu1_indices = bmu1[i:i + batch_size]
-            batch_bmu2_indices = bmu2[i:i + batch_size]
-    
-            # Get the actual SOMNode objects for the batch.  This is crucial.
-            batch_bmu1_nodes = [self.nodes_list[int(idx)] for idx in batch_bmu1_indices]
-            batch_bmu2_nodes = [self.nodes_list[int(idx)] for idx in batch_bmu2_indices]
+            """Calculate Topographic Error (TE).
             
-            # Calculate neighbors for the current batch using the provided get_node_distance
-            batch_neighbors = [
-                (batch_bmu1_nodes[j].get_node_distance(batch_bmu2_nodes[j]))<1.2
-                for j in range(len(batch_bmu1_nodes))
-            ]
-            b2mu_neighbors.extend(batch_neighbors)
-    
-        # Calculates the fraction of nodes that aren't neighbors
-        te = 1 - self.xp.mean(self.xp.array(b2mu_neighbors))
-        return float(te.get() if self.GPU else te
+            Returns:
+                (float): Proportion of vectors whose BMU and second BMU are not neighbors.
+            """
+            bmu1, bmu2 = self.find_2bmu_ix(self.data)
+            
+            b2mu_neighbors = []
+            for i in range(0, len(bmu1), batch_size):
+                batch_bmu1_indices = bmu1[i:i + batch_size]
+                batch_bmu2_indices = bmu2[i:i + batch_size]
+            
+                # Get the actual SOMNode objects for the batch.  This is crucial.
+                batch_bmu1_nodes = [self.nodes_list[int(idx)] for idx in batch_bmu1_indices]
+                batch_bmu2_nodes = [self.nodes_list[int(idx)] for idx in batch_bmu2_indices]
+                
+                # Calculate neighbors for the current batch using the provided get_node_distance
+                batch_neighbors = [
+                    (batch_bmu1_nodes[j].get_node_distance(batch_bmu2_nodes[j]))<1.2
+                    for j in range(len(batch_bmu1_nodes))
+                ]
+                b2mu_neighbors.extend(batch_neighbors)
+            
+            # Calculates the fraction of nodes that aren't neighbors
+            te = 1 - self.xp.mean(self.xp.array(b2mu_neighbors))
+            return float(te.get() if self.GPU else te
     ##############################################################################
     
     def train(self, train_algo: str = "batch", epochs: int = -1,
