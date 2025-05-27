@@ -406,7 +406,7 @@ class SOMNet:
                 total_distance += self.xp.sum(actual_distances)
     
             qe = total_distance / num_data_points
-            return float(qe.get() if self.GPU else qe
+            return float(qe.get() if self.GPU else qe)
 
     # Used MiniSom _topographic_error_hexagonal as a reference
     def calculate_te(self, batch_size: int = 1024) -> float:
