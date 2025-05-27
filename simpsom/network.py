@@ -396,14 +396,13 @@ class SOMNet:
             for i in range(0, num_data_points, batch_size):
                 batch_data = self.data[i:i + batch_size]
                 bmus = self.find_bmu_ix(batch_data)
-                bmu_weights_batch = self.xp.array([self.nodes_list[int(bmu)].weights for bmu in bmus])
-    
+                bmu_weights_batch = self.xp.stack([self.nodes_list[int(bmu)].weights for bmu in bmus], axis=0)
+        
                 # This function calculates the distances to all combinations the arrays
-                distances_batch = self.distance.pairdist(batch_data, bmu_weights_batch, metric=self.metric)
-    
-                # We only one the combinations corresponding to the same index, so the diagonal
-                actual_distances = self.xp.diag(distances_batch)
-                
+                # We only want the combinations corresponding to the same index, so compute Euclidean directly
+                diffs = batch_data - bmu_weights_batch
+                actual_distances = self.xp.sqrt(self.xp.sum(diffs ** 2, axis=1))
+        
                 total_distance += self.xp.sum(actual_distances)
     
             qe = total_distance / num_data_points
@@ -423,7 +422,7 @@ class SOMNet:
                 batch_bmu1_indices = bmu1[i:i + batch_size]
                 batch_bmu2_indices = bmu2[i:i + batch_size]
             
-                # Get the actual SOMNode objects for the batch.  This is crucial.
+                # Get the actual SOMNode objects for the batch.
                 batch_bmu1_nodes = [self.nodes_list[int(idx)] for idx in batch_bmu1_indices]
                 batch_bmu2_nodes = [self.nodes_list[int(idx)] for idx in batch_bmu2_indices]
                 
