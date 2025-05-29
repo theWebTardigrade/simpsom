@@ -377,33 +377,32 @@ class SOMNet:
         
         return bmu1, bmu2
 
-     def calculate_qe(self, batch_size: int = 1024) -> float:
-            """Calculate Quantization Error (QE) more memory-efficiently.
+    def calculate_qe(self, batch_size: int = 1024) -> float:
+        """Calculate Quantization Error (QE) more memory-efficiently.
     
-            Args:
+        Args:
                 batch_size (int): Size of the data chunks to process.
     
-            Returns:
+        Returns:
                 (float): Average distance between input vectors and their BMUs.
-            """
-            num_data_points = self.data.shape[0]
-            total_distance = self.xp.zeros(1, dtype=self.xp.float32)
+        """
+        num_data_points = self.data.shape[0]
+        total_distance = self.xp.zeros(1, dtype=self.xp.float32)
     
-    
-            bmus_idxs = self.find_bmu_ix(self.data)
-            bmus_weights = self.xp.array([self.nodes_list[int(bmu)].weights for bmu in bmus_idxs])
+        bmus_idxs = self.find_bmu_ix(self.data)
+        bmus_weights = self.xp.array([self.nodes_list[int(bmu)].weights for bmu in bmus_idxs])
             
-            for i in range(0, num_data_points, batch_size):
-                batch_data = self.data[i:i + batch_size]
-                bmus = self.find_bmu_ix(batch_data)
-                bmu_weights_batch = self.xp.stack([self.nodes_list[int(bmu)].weights for bmu in bmus], axis=0)
+        for i in range(0, num_data_points, batch_size):
+            batch_data = self.data[i:i + batch_size]
+            bmus = self.find_bmu_ix(batch_data)
+            bmu_weights_batch = self.xp.stack([self.nodes_list[int(bmu)].weights for bmu in bmus], axis=0)
         
                 # This function calculates the distances to all combinations the arrays
                 # We only want the combinations corresponding to the same index, so compute Euclidean directly
-                diffs = batch_data - bmu_weights_batch
-                actual_distances = self.xp.sqrt(self.xp.sum(diffs ** 2, axis=1))
+            diffs = batch_data - bmu_weights_batch
+            actual_distances = self.xp.sqrt(self.xp.sum(diffs ** 2, axis=1))
         
-                total_distance += self.xp.sum(actual_distances)
+            total_distance += self.xp.sum(actual_distances)
     
             qe = total_distance / num_data_points
             return float(qe.get() if self.GPU else qe)
