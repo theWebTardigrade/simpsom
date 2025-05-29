@@ -353,80 +353,80 @@ class SOMNet:
     # Calculate Quantization and Topographic Error
 
 
-	# From I. Matute @is-mat-tron
-    def find_2bmu_ix(self, vecs: np.array) -> 'SOMNode':
-        """Find the index of the best 2 matching units (BMUs) for a given list of vectors.
-		
-        Args:
-		vec (array or list[lists, ..]): vectors whose distance from the network
-			nodes will be calculated.
-        Returns:
-		(bmu1, bmu2)
-		bmu1 (array): The best matching unit node index.
-		bmu2 (array): The second best matching unit node index.
-        """
-        dists = self.distance.pairdist(
-			vecs,
-			self.xp.array([n.weights for n in self.nodes_list]),
-			metric=self.metric
-		)
-        bmu1 = self.xp.argmin(dists, axis=1)
-	dists[self.xp.arange(dists.shape[0]), bmu1] = 1e10  # High value to force second BMU
-	bmu2 = self.xp.argmin(dists, axis=1)
-	
-	return bmu1, bmu2
-	
+# From I. Matute @is-mat-tron
+def find_2bmu_ix(self, vecs: np.array) -> 'SOMNode':
+    """Find the index of the best 2 matching units (BMUs) for a given list of vectors.
+
+    Args:
+        vec (array or list[lists, ..]): vectors whose distance from the network
+            nodes will be calculated.
+    Returns:
+        (bmu1, bmu2)
+        bmu1 (array): The best matching unit node index.
+        bmu2 (array): The second best matching unit node index.
+    """
+    dists = self.distance.pairdist(
+        vecs,
+        self.xp.array([n.weights for n in self.nodes_list]),
+        metric=self.metric
+    )
+    bmu1 = self.xp.argmin(dists, axis=1)
+    dists[self.xp.arange(dists.shape[0]), bmu1] = 1e10  # High value to force second BMU
+    bmu2 = self.xp.argmin(dists, axis=1)
+
+    return bmu1, bmu2
+
 def calculate_qe(self, batch_size: int = 1024) -> float:
-        """Calculate Quantization Error (QE) more memory-efficiently.
-        
-        Args:
+    """Calculate Quantization Error (QE) more memory-efficiently.
+
+    Args:
         batch_size (int): Size of the data chunks to process.
-        
-        Returns:
+
+    Returns:
         (float): Average distance between input vectors and their BMUs.
-        """
-        num_data_points = self.data.shape[0]
-        total_distance = self.xp.zeros(1, dtype=self.xp.float32)
-        
-        for i in range(0, num_data_points, batch_size):
-                batch_data = self.data[i:i + batch_size]
-                bmus = self.find_bmu_ix(batch_data)
-                bmu_weights_batch = self.xp.stack([self.nodes_list[int(bmu)].weights for bmu in bmus], axis=0)
+    """
+    num_data_points = self.data.shape[0]
+    total_distance = self.xp.zeros(1, dtype=self.xp.float32)
 
-                diffs = batch_data - bmu_weights_batch
-                actual_distances = self.xp.sqrt(self.xp.sum(diffs ** 2, axis=1))
-                total_distance += self.xp.sum(actual_distances)
-        
-        qe = total_distance / num_data_points
-        return float(qe.get() if self.GPU else qe)
-	
-	# Used MiniSom _topographic_error_hexagonal as a reference
-    def calculate_te(self, batch_size: int = 1024) -> float:
-        """Calculate Topographic Error (TE).
+    for i in range(0, num_data_points, batch_size):
+        batch_data = self.data[i:i + batch_size]
+        bmus = self.find_bmu_ix(batch_data)
+        bmu_weights_batch = self.xp.stack([self.nodes_list[int(bmu)].weights for bmu in bmus], axis=0)
 
-	Args:
-		batch_size (int): Size of the data chunks to process.
+        diffs = batch_data - bmu_weights_batch
+        actual_distances = self.xp.sqrt(self.xp.sum(diffs ** 2, axis=1))
+        total_distance += self.xp.sum(actual_distances)
 
-	Returns:
-		(float): Proportion of vectors whose BMU and second BMU are not neighbors.
-	"""
-        bmu1, bmu2 = self.find_2bmu_ix(self.data)
-        total_non_neighbors = 0
-        num_data_points = len(bmu1)
+    qe = total_distance / num_data_points
+    return float(qe.get() if self.GPU else qe)
 
-        for i in range(0, num_data_points, batch_size):
-                bmu1_batch = bmu1[i:i + batch_size]
-                bmu2_batch = bmu2[i:i + batch_size]
+# Used MiniSom _topographic_error_hexagonal as a reference
+def calculate_te(self, batch_size: int = 1024) -> float:
+    """Calculate Topographic Error (TE).
 
-                nodes1 = [self.nodes_list[int(ix)] for ix in bmu1_batch]
-                nodes2 = [self.nodes_list[int(ix)] for ix in bmu2_batch]
+    Args:
+        batch_size (int): Size of the data chunks to process.
 
-                non_neighbors = sum(node1.get_node_distance(node2) >= 1.2 for node1, node2 in zip(nodes1, nodes2))
+    Returns:
+        (float): Proportion of vectors whose BMU and second BMU are not neighbors.
+    """
+    bmu1, bmu2 = self.find_2bmu_ix(self.data)
+    total_non_neighbors = 0
+    num_data_points = len(bmu1)
 
-                total_non_neighbors += non_neighbors
+    for i in range(0, num_data_points, batch_size):
+        bmu1_batch = bmu1[i:i + batch_size]
+        bmu2_batch = bmu2[i:i + batch_size]
 
-        te = total_non_neighbors / num_data_points
-        return float(te.get() if self.GPU else te)
+        nodes1 = [self.nodes_list[int(ix)] for ix in bmu1_batch]
+        nodes2 = [self.nodes_list[int(ix)] for ix in bmu2_batch]
+
+        non_neighbors = sum(node1.get_node_distance(node2) >= 1.2 for node1, node2 in zip(nodes1, nodes2))
+
+        total_non_neighbors += non_neighbors
+
+    te = total_non_neighbors / num_data_points
+    return float(te.get() if self.GPU else te)
 
 
     ##############################################################################
