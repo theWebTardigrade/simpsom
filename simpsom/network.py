@@ -436,8 +436,9 @@ class SOMNet:
         sample_size = max(1, num_total_points // 10)  # Ensure at least 1 sample
         rng = self.xp.random.RandomState(42)  # For reproducible sampling
         indices = rng.choice(num_total_points, size=sample_size, replace=False)
-    
-        bmu1, bmu2 = self.find_2bmu_ix(self.data)
+        subsampled_data = self.data[indices]
+        
+        bmu1, bmu2 = self.find_2bmu_ix(sampled_data)
         total_non_neighbors = 0
         num_data_points = len(bmu1)
 
