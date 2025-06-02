@@ -438,7 +438,7 @@ class SOMNet:
         indices = rng.choice(num_total_points, size=sample_size, replace=False)
         subsampled_data = self.data[indices]
         
-        bmu1, bmu2 = self.find_2bmu_ix(sampled_data)
+        bmu1, bmu2 = self.find_2bmu_ix(subsampled_data)
         total_non_neighbors = 0
         num_data_points = len(bmu1)
 
