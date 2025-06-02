@@ -352,6 +352,21 @@ class SOMNet:
     # Calculate 1st and 2nds BMUs 
     # Calculate Quantization and Topographic Error
 
+    def find_bmu_dist(self, vecs: np.array) -> np.array:
+        """Find the distance to the best matching unit (BMU) for given vectors.
+    
+        Args:
+            vecs (array): Vectors whose distance from the network nodes will be calculated.
+    
+        Returns:
+            array: Distances to the best matching units.
+        """
+        dists = self.distance.pairdist(
+            vecs,
+            self.xp.array([n.weights for n in self.nodes_list]),
+            metric=self.metric
+        )
+        return self.xp.min(dists, axis=1)
 
     # From I. Matute @is-mat-tron
     def find_2bmu_ix(self, vecs: np.array) -> 'SOMNode':
@@ -385,18 +400,23 @@ class SOMNet:
         Returns:
             (float): Average distance between input vectors and their BMUs.
         """
-        num_data_points = self.data.shape[0]
+    
+        # Randomly select 10% of data points
+        num_total_points = self.data.shape[0]
+        sample_size = max(1, num_total_points // 10)
+        rng = self.xp.random.RandomState(42)
+        indices = rng.choice(num_total_points, size=sample_size, replace=False)
+        subsampled_data = self.data[indices]
+        
+        num_data_points = subsampled_data.shape[0]
         total_distance = self.xp.zeros(1, dtype=self.xp.float32)
-
+    
         for i in range(0, num_data_points, batch_size):
-            batch_data = self.data[i:i + batch_size]
-            bmus = self.find_bmu_ix(batch_data)
-            bmu_weights_batch = self.xp.stack([self.nodes_list[int(bmu)].weights for bmu in bmus], axis=0)
-
-            diffs = batch_data - bmu_weights_batch
-            actual_distances = self.xp.sqrt(self.xp.sum(diffs ** 2, axis=1))
-            total_distance += self.xp.sum(actual_distances)
-
+            batch_data = subsampled_data[i:i + batch_size]
+            # Use the new distance-based function
+            batch_distances = self.find_bmu_dist(batch_data)
+            total_distance += self.xp.sum(batch_distances)
+    
         qe = total_distance / num_data_points
         return float(qe.get() if self.GPU else qe)
 
@@ -410,6 +430,13 @@ class SOMNet:
         Returns:
             (float): Proportion of vectors whose BMU and second BMU are not neighbors.
         """
+
+        # Randomly select 10% of data points
+        num_total_points = self.data.shape[0]
+        sample_size = max(1, num_total_points // 10)  # Ensure at least 1 sample
+        rng = self.xp.random.RandomState(42)  # For reproducible sampling
+        indices = rng.choice(num_total_points, size=sample_size, replace=False)
+    
         bmu1, bmu2 = self.find_2bmu_ix(self.data)
         total_non_neighbors = 0
         num_data_points = len(bmu1)
