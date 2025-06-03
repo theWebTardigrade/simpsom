@@ -74,7 +74,7 @@ def plot_map(centers: Collection[np.ndarray], feature: Collection[np.ndarray], p
 
         # Fix number of decimals
         ticks = cbar.get_ticks()
-        cbar.set_ticklabels([f'{t:.3f}' for t in ticks])
+        cbar.set_ticklabels([f'{t:.{kwargs["decimals"]}f}' for t in ticks])
 
     fig.tight_layout()
     plt.sca(ax)
